@@ -1,0 +1,49 @@
+{
+    "$schema": "https://raw.githubusercontent.com/MoAlyousef/fltk-decl/main/schemas/fltk-schema.json",
+    "widget": "Column",
+    "children": [
+        {
+            "widget": "Button",
+            "label": "Increment",
+            "fixed": 60,
+            "id": "inc",
+            "labelcolor": "#0000ff"
+
+        },
+        {
+            "widget": "Slider"
+        },
+        {
+            "widget": "Row",
+            "children": [
+                {
+                    "widget": "Frame",
+                    "fixed": 30
+                },
+                {
+                    "widget": "Frame",
+                    "label": "0",
+                    "id": "result",
+                    "labelcolor": "#ff0000"
+                },
+                {
+                    "widget": "Frame",
+                    "fixed": 30
+                }
+            ]
+        },
+        {
+            "widget": "Button",
+            "label": "Dec",
+            "fixed": 60,
+            "id": "dec"
+        },
+        {
+            "widget": "HorValueSlider",
+            "label": "Temp",
+            "fixed": 60,
+            "id": "temp",
+            "slidersize": 40
+        }
+    ]
+}

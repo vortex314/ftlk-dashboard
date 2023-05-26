@@ -1,0 +1,19 @@
+[env]
+CRATE_CC_NO_DEFAULTS="1"
+CMAKE_SYSROOT="/home/lieven/rpi-sysroot"
+CC="/home/lieven/toolchain/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+CXX="/home/lieven/toolchain/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-g++"
+CMAKE_C_FLAGS="-I/home/lieven/rpi-sysroot/usr/include/arm-linux-gnueabihf"
+CMAKE_CXX_FLAGS="-I/home/lieven/rpi-sysroot/usr/include/arm-linux-gnueabihf"
+CMAKE_EXE_LINKER_FLAGS="-L/home/lieven/rpi-sysroot/usr/lib/arm-linux-gnueabihf"
+[target.arm-unknown-linux-gnueabihf]
+rustc-env = {PKG_CONFIG_ALLOW_CROSS="1",LIBCLANG_PATH="/usr/lib/llvm-14/lib",PKG_CONFIG_SYSROOT_DIR="~/rpi-sysroot",DEP_LV_CONFIG_PATH="./lv_fb",CRATE_CC_NO_DEFAULTS="1"} # for lvgl c build 
+linker = "arm-linux-gnueabihf-gcc"
+rustflags = [
+    "-C", "link-arg=--sysroot=/home/lieven/rpi-sysroot",
+    "-C", "link-arg=-L/home/lieven/rpi-sysroot/usr/lib/arm-linux-gnueabihf",
+    "-C", "link-arg=-L/home/lieven/rpi-sysroot/usr/lib",
+    "-C", "link-arg=-L/home/lieven/toolchain/arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/lib",
+    "-C", "link-arg=-lpthread",
+    ]
+

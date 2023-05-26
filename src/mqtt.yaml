@@ -1,0 +1,6 @@
+mqtt:
+  -host: "pi1.local"
+  port: 3609
+tab_1:
+  grid: [32,24]
+  

@@ -1,0 +1,15 @@
+[package]
+name = "fl"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fltk-decl = { version = "0.2", features = ["json"] }
+fltk = "1.3.32"
+serde_json5 = "0.1" # for json5
+serde-xml-rs = "0.6" # for xml
+serde_yaml = "0.9" # for yaml
+toml = "0.7" # for toml
+serde-lexpr = "0.1.2" # for an s-expression description
