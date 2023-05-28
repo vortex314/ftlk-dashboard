@@ -13,3 +13,5 @@ serde-xml-rs = "0.6" # for xml
 serde_yaml = "0.9" # for yaml
 toml = "0.7" # for toml
 serde-lexpr = "0.1.2" # for an s-expression description
+cross = "0.2.5"
+
