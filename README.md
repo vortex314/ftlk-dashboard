@@ -8,3 +8,15 @@ Customisable config driven  dashboard for MQTT and Redis, based on ftlk-decl
 - Goal is to subscribe to events and send commands on MQTT via the widgets to the different HW modules
 - Preferrably a low-budget raspberry pi is used to drive a monitor for these displays
 - 
+## Install
+cargo install cross --git https://github.com/cross-rs/cross
+
+cargo install cross --git https://github.com/cross-rs/cross
+
+## Possible issues
+
+# cross : 'could not get os and arch '
+- start Docker or colima on MacOs
+# armhf libraries not usable in ARMV6
+- these libraries use a ARMV7 startup dat seg faults on Raspberry Pi1
+

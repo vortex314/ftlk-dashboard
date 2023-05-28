@@ -1,24 +1,25 @@
-[package]
-name = "fl"
-version = "0.1.0"
-edition = "2021"
-
 [target.arm-unknown-linux-gnueabi]
 # image = "docker-armv6-image:latest"
-image = "dockcross/linux-armv6"
+# image = "dockcross/linux-armv6"
+dockerfile = "./Dockerfile"
+
+[target.arm-unknown-linux-gnueabihf-prev]
+passthrough = ["PKG_CONFIG_PATH"]
+image = "dockcross/linux-armv6:latest"
+# dockerfile = "./Dockerfile"
 pre-build = [""" \
     dpkg --add-architecture armhf && \
     apt-get update && \
-    apt-get install --assume-yes --no-install-recommends \
+    apt-get install --assume-yes  \
     doxygen graphviz latexmk texlive-base \
     libx11-dev:armhf libxext-dev:armhf libxft-dev:armhf \
     libxinerama-dev:armhf libxcursor-dev:armhf \
     libxrender-dev:armhf  libxfixes-dev:armhf  libgl1-mesa-dev:armhf \
     libglu1-mesa-dev:armhf libasound2-dev:armhf libpango1.0-dev:armhf \
     """]
+
 [target.arm-unknown-linux-gnueabihf]
-# image = "limero-armv6:latest"
-dockerfile = "./Dockerfile"
+image = "rustembedded/cross:arm-unknown-linux-gnueabihf"
 pre-build = [""" \
     dpkg --add-architecture armhf && \
     apt-get update && \

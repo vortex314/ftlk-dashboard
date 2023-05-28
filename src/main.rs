@@ -1,5 +1,5 @@
 use fltk::{prelude::*, *};
-use fltk_decl::{DeclarativeApp, Widget};
+use fltk_decl::{DeclarativeApp};
 
 // use the extension you require!
 const PATH: &str = "src/gui.json";

@@ -1,0 +1,18 @@
+FROM dockcross/linux-armv6 
+
+RUN dpkg --add-architecture armel && \
+    apt-get update && \
+    apt-get install --assume-yes --no-install-recommends \
+    doxygen graphviz latexmk texlive-base
+
+RUN apt-get install --assume-yes --no-install-recommends \
+    libx11-dev:armel libxext-dev:armel libxft-dev:armel \
+    libxinerama-dev:armel libxcursor-dev:armel \
+    libxrender-dev:armel  libxfixes-dev:armel  libgl1-mesa-dev:armel \
+    libglu1-mesa-dev:armel libasound2-dev:armel libpango1.0-dev:armel
+
+RUN apt-get install --assume-yes --no-install-recommends \
+    g++-arm-linux-gnueabi \
+    libc6-dev-armel-cross ssh
+
+ENV  CROSS_CMAKE_OBJECT_FLAGS="-ffunction-sections -fdata-sections -fPIC -march=armv6 -marm -mfloat-abi=soft -L/usr/lib/arm-linux-gnueabihf/"
