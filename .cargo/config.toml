@@ -1,2 +1,6 @@
+[target.arm-unknown-linux-gnueabi]
+    linker = "arm-linux-gnueabi-ld"
+    rustc-link-lib = ["foo"]
+    rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabi/"]
 
 
