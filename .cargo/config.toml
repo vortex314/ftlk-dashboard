@@ -1,6 +1,6 @@
 [target.arm-unknown-linux-gnueabi]
     linker = "arm-linux-gnueabi-ld"
-    rustc-link-lib = ["foo"]
     rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabi/"]
-
+[target.arm-unknown-linux-gnueabihf]
+    linker = "/rpi_tools/arm-bcm2708/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
 

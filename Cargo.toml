@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 fltk-decl = { version = "0.2", features = ["json"] }
-fltk = "1.3.32"
+fltk = { version = "^1.4" }
 serde_json5 = "0.1" # for json5
 serde-xml-rs = "0.6" # for xml
 serde_yaml = "0.9" # for yaml
