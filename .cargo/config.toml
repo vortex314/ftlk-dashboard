@@ -2,5 +2,6 @@
     linker = "arm-linux-gnueabi-ld"
     rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabi/"]
 [target.arm-unknown-linux-gnueabihf]
-    linker = "/rpi_tools/arm-bcm2708/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+    linker = "arm-linux-gnueabihf-gcc"
+    rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabi/","-C","linker=arm-linux-gnueabihf-gcc"]
 
