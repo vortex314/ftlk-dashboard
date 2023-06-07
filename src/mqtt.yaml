@@ -1,6 +1,33 @@
 mqtt:
-  -host: "pi1.local"
-  port: 3609
+  host: "pcthink.local"
+  port: 1883
+redis:
+  host: "pcthink.local"
+  port: 6379
 tab_1:
   grid: [32,24]
+  gauge_latency:
+    suffix: "ms"
+    prefix: "Latency"
+    pos: [0,0]
+    size: [4,4]
+    src: 
+      topic: "src/ESP32-44592/sys/latency"
+    min: 0
+    max: 50
+    decimals: 1
+    color: "red"
+  led_usb_alive:
+    suffix: ""
+    prefix: "USB"
+    pos: [8,0]
+    size: [1,1]
+    src: 
+      topic: "src/USB0/system/alive"
+      on_value: "true"
+      off_value: "false"
+      src_timeout: 5
+    on_color: "green"
+    off_color: "red"
+
   

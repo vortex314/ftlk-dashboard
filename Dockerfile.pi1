@@ -29,7 +29,7 @@ RUN curl -sL https://github.com/raspberrypi/tools/archive/$RASPBERRY_PI_TOOLS_CO
 
 # Need to add both these to PATH.
 ENV PATH=/usr/local/arm-bcm2708/arm-linux-gnueabihf/bin:$PATH
-ENV PATH=/usr/local/arm-bcm2708/arm-linux-gnueabihf/libexec/gcc/arm-linux-gnueabihf/4.8.3:$PATH
+ENV PATH=/usr/local/arm-bcm2708/arm-linux-gnueabihf/libexec/gcc/arm-linux-gnueabihf/4.9.3:$PATH
 
 # Install Rust.
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --verbose
