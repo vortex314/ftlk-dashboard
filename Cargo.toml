@@ -11,3 +11,4 @@ serde_yaml = "0.9.21" # for a yaml description
 log = "0.4.14" # for logging
 simplelog = "0.12.1" # for logging
 redis = "0.23.0" # for redis
+crossbeam = "0.8.0" # for crossbeam_channel

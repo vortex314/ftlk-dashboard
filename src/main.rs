@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+mod limero;
 
 // use the extension you require!
 const PATH: &str = "src/mqtt.yaml";
