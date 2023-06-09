@@ -18,6 +18,7 @@ use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
 mod limero;
+use limero::limero::Thread;
 
 // use the extension you require!
 const PATH: &str = "src/mqtt.yaml";
@@ -77,6 +78,9 @@ fn main() -> Result<(), Option<String> > {
     let config = load_yaml_file(PATH);
 
     let redis_connection = redis_config(&config);
+    let mut thread = Thread::new();
+    let t1 = thread.new_timer(true, Duration::from_millis(1000), Box::new(||{ info!("Timer 1");}));
+    thread.start();
 
     info!("Starting up fltk");
 
