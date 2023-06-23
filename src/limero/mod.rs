@@ -1,6 +1,8 @@
 use std::ops::ShrAssign;
 
+
 pub mod limero;
+pub mod redis;
 pub trait Sink<T> {
     fn on(&mut self, value: & T);
 }

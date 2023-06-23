@@ -3,5 +3,5 @@
     rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabi/"]
 [target.arm-unknown-linux-gnueabihf]
     linker = "arm-linux-gnueabihf-gcc"
-    rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabi/","-C","linker=arm-linux-gnueabihf-gcc"]
+    rustflags = ["-C", "link-arg=-L/usr/lib/arm-linux-gnueabihf/","-C","linker=arm-linux-gnueabihf-gcc"]
 
