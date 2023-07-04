@@ -51,3 +51,11 @@ symlinks -rcd rpi-sysroot
 
 https://github.com/japaric/rust-cross
 https://github.com/sdt/docker-raspberry-pi-cross-compiler
+
+# What I will remember from Rust language 
+- No native GUI , just unsafe wrappers around existing C/C++ libraries
+- Create callbacks is hell , just search google for all the questions on this subject. Basically you need an Arc on a Mtutex on an FnMut that supports Sync and Send and is also static. Rust says : human you're unable to reason about the safety of these callbacks, so I'll forbid to do anything except use message passing channels.
+- A callback and nested types is a lot of code noise 
++ Nice build and library system to re-use what others created 
+- didn't find an equivalent of libuv that integrates with async/await pattern
+- Rust avoid the shoot in the foot scenario's like C++, by parelizing the developer and remove any arms. 
