@@ -2,11 +2,19 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]
+use fltk::button::Button;
 use pretty_env_logger;
+use regex::Regex;
+
 #[macro_use]
 extern crate log;
+use fltk::app::{awake, App};
+use fltk::enums::Color;
+use fltk::enums::Event;
 use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
+use fltk_grid::Grid;
+
 use log::{debug, error, info, trace, warn};
 use serde_yaml::Value;
 use simplelog::SimpleLogger;
@@ -44,19 +52,56 @@ fn load_yaml_file(path: &str) -> BTreeMap<String, Value> {
     v
 }
 
-fn window_fill(win: &mut DoubleWindow, config: BTreeMap<String, Value>) {
+fn split_underscore(str: &String) -> (Option<&str>, Option<&str>) {
+    let mut it = str.split("_");
+    (it.next(), it.next())
+}
+
+fn get_array_of_2(object: &Value, key: &str) -> Option<(i64, i64)> {
+    info!(
+        " get array of 2 for '{}' in {:?}",
+        key,
+        object[key].as_sequence()
+    );
+    let field1 = object[key]
+        .as_sequence()
+        .and_then(|seq| Some(seq[0].clone()))
+        .and_then(|v| v.as_i64());
+
+    let field2 = object[key]
+        .as_sequence()
+        .and_then(|seq| Some(seq[1].clone()))
+        .and_then(|v| v.as_i64());
+
+    field1
+        .and(field2)
+        .and(Some((field1.unwrap(), field2.unwrap())))
+}
+
+fn get_pos(object: &Value) -> Option<(usize, usize)> {
+    let pos = get_array_of_2(object, "pos");
+    pos.and_then(|(v1, v2)| {
+        let f1 = usize::try_from(v1);
+        let f2 = usize::try_from(v2);
+        if f1.is_ok() && f2.is_ok() {
+            Some((f1.unwrap(), f2.unwrap()))
+        } else {
+            None
+        }
+    })
+}
+
+fn window_fill(grid: &mut Grid, config: BTreeMap<String, Value>) {
     for (config_key, config_value) in config.iter() {
         let mut position = (0, 0);
-        match config_key.as_str() {
-            "redis" => {
-                info!("Redis config found");
+        let (widget, id) = split_underscore(config_key);
+        let params = config_value;
+        match widget.unwrap() {
+            "frame" => {
+                let (x, y) = get_pos(params).unwrap();
+                grid.insert(&mut Button::default(), y, x)
             }
-            "mqtt" => {
-                info!("MQTT config found");
-            }
-            _ => {
-                info!("Unknown config found");
-            }
+            _ => {}
         }
     }
 }
@@ -68,11 +113,28 @@ struct PublishMessage {
 }
 
 #[derive(Debug, Clone)]
-enum Event {
-    Publish(PublishMessage),
+enum RedisEvent {
+    Publish { topic: String, message: String },
+    Stop,
 }
 
-#[tokio::main]
+struct ButtonPub {
+    button: Button,
+    dst_topic: String,
+    dst_value: String,
+}
+
+impl ButtonPub {
+    fn new(_title: &str) -> ButtonPub {
+        ButtonPub {
+            button: Button::new(0, 0, 200, 30, "title"),
+            dst_topic: String::new(),
+            dst_value: String::new(),
+        }
+    }
+}
+
+#[tokio::main(flavor = "multi_thread", worker_threads = 1)]
 async fn main() {
     //    pretty_env_logger::init();
 
@@ -81,45 +143,57 @@ async fn main() {
 
     let config = Box::new(load_yaml_file(PATH));
 
-    let (tx, rx) = broadcast::channel::<Event>(16);
-    //    let (tx_publish, rx_publish) = mpsc::channel::<Event>();
+    let (mut tx_publish, mut rx_publish) = broadcast::channel::<RedisEvent>(16);
+    let (tx_redis_cmd, rx_redis_cmd) = mpsc::channel::<RedisEvent>(16);
     // let rx1 = tx.subscribe();
     // let rx2 = tx.subscribe();
 
     let redis_config = config["redis"].clone();
+
     tokio::spawn(async move {
-        redis(redis_config, tx).await;
+        redis(redis_config, tx_publish).await;
     });
     info!("Starting up fltk");
 
-    loop {
-        let config = config.clone();
-        let mut _app = app::App::default();
-        let mut win = window::Window::default()
-            .with_size(400, 300)
-            .center_screen()
-            .with_label("Hello from rust");
-        window_fill(&mut win, *config);
-        let mut _but = button::Button::default()
-            .with_size(160, 30)
-            .center_of(&win)
-            .with_label("Click me!")
-            .handle(|button,event| {
-                info!("Button clicked");
-                true
-            })
-            ;
-        win.end();
-        win.show();
-        // sleep
-        while _app.wait() {
-            info!("app wait");
+    let mut _app = app::App::default().with_scheme(app::Scheme::Gleam);
+    let config = config.clone();
+    let mut win = window::Window::default()
+        .with_size(1024, 768)
+        .center_screen()
+        .with_label("Hello from rust");
+    let mut grid = Grid::default_fill();
+    grid.set_layout(16, 10);
+    grid.debug(true);
+    window_fill(&mut grid, *config);
+    let mut _but = button::Button::default()
+        .with_size(160, 30)
+        .center_of(&win)
+        .with_label("Click me!");
+
+    _but.handle(|button, event| {
+        info!("Button event {:?}", event);
+        match event {
+            Event::Push => button.set_color(Color::from_rgb(255, 0, 0)),
+            _ => {}
         }
-        _app.run().expect("app failed to run");
+        true
+    });
+    win.end();
+    win.show();
+    // sleep
+    let sub = rx_publish.resubscribe();
+    while _app.wait() {
+        while let Ok(x) = rx_publish.try_recv() {
+            match x {
+                RedisEvent::Publish { topic, message } => _but.set_label(topic.as_str()),
+                _ => {}
+            }
+        }
     }
+    //        _app.run().expect("app failed to run");
 }
 
-async fn redis(config: Value, tx_broadcast: broadcast::Sender<Event>) {
+async fn redis(config: Value, tx_broadcast: broadcast::Sender<RedisEvent>) {
     loop {
         let url = format!(
             "redis://{}:{}/",
@@ -144,10 +218,11 @@ async fn redis(config: Value, tx_broadcast: broadcast::Sender<Event>) {
                 thread::current().name().unwrap(),
                 msg.get_channel_name().to_string(),
             );
-            match tx_broadcast.send(Event::Publish(PublishMessage {
+            awake();
+            match tx_broadcast.send(RedisEvent::Publish {
                 topic: msg.get_channel_name().to_string(),
                 message: msg.get_payload().unwrap(),
-            })) {
+            }) {
                 Ok(_) => {}
                 Err(e) => {
                     error!("|{:>20}| error: {}", thread::current().name().unwrap(), e);
@@ -159,7 +234,7 @@ async fn redis(config: Value, tx_broadcast: broadcast::Sender<Event>) {
 }
 
 // async channel receiver
-async fn receiver(mut rx: broadcast::Receiver<Event>, pattern: &str) {
+async fn receiver(mut rx: broadcast::Receiver<RedisEvent>, pattern: &str) {
     let mut duration: Duration;
     const MAX_TIME: std::time::Duration = std::time::Duration::from_secs(10);
     let mut _time_last = std::time::Instant::now();
@@ -180,21 +255,22 @@ async fn receiver(mut rx: broadcast::Receiver<Event>, pattern: &str) {
         }
         let event = time::timeout(duration, rx.recv()).await;
         match event {
-            Ok(Ok(Event::Publish(msg))) => {
-                if msg.topic.starts_with(pattern) {
+            Ok(Ok(RedisEvent::Publish { topic, message })) => {
+                if topic.starts_with(pattern) {
                     _time_last = std::time::Instant::now();
                     info!(
                         "|{:>20}| Widget pattern : {} topic: {}, message: {}",
                         thread::current().name().unwrap(),
                         pattern,
-                        msg.topic,
-                        msg.message
+                        topic,
+                        message
                     );
                 }
             }
             Ok(Err(e)) => {
                 error!("|{:>20}| error: {}", thread::current().name().unwrap(), e);
             }
+            Ok(Ok(RedisEvent::Stop)) => {}
             Err(e) => {
                 error!(
                     "|{:>20}| timeout : {} {} ",
