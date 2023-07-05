@@ -7,12 +7,12 @@ redis:
 
 frame_heap-shaker1:
   suffix: "Bytes"
-  prefix: "Heap : "
+  prefix: "Shaker1 Heap : "
   pos: [0,0]
   src_topic: "src/shaker1/system/heap"
 frame_heap-shaker2:
   suffix: "Bytes"
-  prefix: "Heap : "
+  prefix: "Shaker2 Heap : "
   pos: [3,3]
   src_topic: "src/shaker2/system/heap"
 frame_heap-shaker3:

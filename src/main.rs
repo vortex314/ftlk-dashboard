@@ -3,7 +3,6 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 use fltk::button::Button;
-use pretty_env_logger;
 use regex::Regex;
 
 #[macro_use]
@@ -25,20 +24,17 @@ use std::io::prelude::*;
 //use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-mod limero;
 use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
-use limero::limero::Thread as LimeroThread;
-use limero::limero::ThreadCommand;
-use limero::limero::Timer;
-use limero::redis::Redis;
 use std::fmt::Error;
 use std::thread::{self, sleep, Thread};
 use tokio::sync::broadcast;
 use tokio::time::{self, Duration};
 use tokio::{sync::mpsc, task};
 use tokio_stream::StreamExt;
-
-use crate::limero::redis::RedisCommand;
+mod redis_bridge;
+use redis_bridge::{redis, RedisEvent};
+mod my_logger;
+use std::env;
 
 // use the extension you require!
 const PATH: &str = "src/mqtt.yaml";
@@ -99,23 +95,17 @@ fn window_fill(grid: &mut Grid, config: BTreeMap<String, Value>) {
         match widget.unwrap() {
             "frame" => {
                 let (x, y) = get_pos(params).unwrap();
-                grid.insert(&mut Button::default(), y, x)
+                grid.insert(&mut Button::default(), y, x);
+                tokio::spawn(async move {
+                    loop {
+                        sleep(Duration::from_millis(1000));
+                        awake();
+                    }
+                });
             }
             _ => {}
         }
     }
-}
-
-#[derive(Debug, Clone)]
-struct PublishMessage {
-    topic: String,
-    message: String,
-}
-
-#[derive(Debug, Clone)]
-enum RedisEvent {
-    Publish { topic: String, message: String },
-    Stop,
 }
 
 struct ButtonPub {
@@ -136,9 +126,9 @@ impl ButtonPub {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
 async fn main() {
-    //    pretty_env_logger::init();
-
-    let _ = SimpleLogger::init(log::LevelFilter::Info, simplelog::Config::default());
+    env::set_var("RUST_LOG", "info");
+    my_logger::init();
+    //   let _ = SimpleLogger::init(log::LevelFilter::Info, simplelog::Config::default());
     info!("Starting up. Reading config file {}.", PATH);
 
     let config = Box::new(load_yaml_file(PATH));
@@ -155,7 +145,7 @@ async fn main() {
     });
     info!("Starting up fltk");
 
-    let mut _app = app::App::default().with_scheme(app::Scheme::Gleam);
+    let mut _app = app::App::default();
     let config = config.clone();
     let mut win = window::Window::default()
         .with_size(1024, 768)
@@ -165,19 +155,7 @@ async fn main() {
     grid.set_layout(16, 10);
     grid.debug(true);
     window_fill(&mut grid, *config);
-    let mut _but = button::Button::default()
-        .with_size(160, 30)
-        .center_of(&win)
-        .with_label("Click me!");
-
-    _but.handle(|button, event| {
-        info!("Button event {:?}", event);
-        match event {
-            Event::Push => button.set_color(Color::from_rgb(255, 0, 0)),
-            _ => {}
-        }
-        true
-    });
+    grid.end();
     win.end();
     win.show();
     // sleep
@@ -185,52 +163,12 @@ async fn main() {
     while _app.wait() {
         while let Ok(x) = rx_publish.try_recv() {
             match x {
-                RedisEvent::Publish { topic, message } => _but.set_label(topic.as_str()),
+                RedisEvent::Publish { topic, message } => {},
                 _ => {}
             }
         }
     }
     //        _app.run().expect("app failed to run");
-}
-
-async fn redis(config: Value, tx_broadcast: broadcast::Sender<RedisEvent>) {
-    loop {
-        let url = format!(
-            "redis://{}:{}/",
-            config["host"].as_str().or(Some("localhost")).unwrap(),
-            config["port"].as_str().or(Some("6379")).unwrap()
-        );
-        let client = redis::Client::open(url.clone()).unwrap();
-        info!(
-            "|{:>20}| Redis connecting {} ...  ",
-            thread::current().name().unwrap(),
-            url
-        );
-        let connection = client.get_async_connection().await.unwrap();
-        let mut pubsub = connection.into_pubsub();
-        pubsub.psubscribe("*").await.unwrap();
-
-        let mut pubsub_stream = pubsub.into_on_message();
-
-        while let Some(msg) = pubsub_stream.next().await {
-            info!(
-                "|{:>20}| Redis topic: {}",
-                thread::current().name().unwrap(),
-                msg.get_channel_name().to_string(),
-            );
-            awake();
-            match tx_broadcast.send(RedisEvent::Publish {
-                topic: msg.get_channel_name().to_string(),
-                message: msg.get_payload().unwrap(),
-            }) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("|{:>20}| error: {}", thread::current().name().unwrap(), e);
-                    break;
-                }
-            }
-        }
-    }
 }
 
 // async channel receiver
@@ -242,11 +180,6 @@ async fn receiver(mut rx: broadcast::Receiver<RedisEvent>, pattern: &str) {
 
     loop {
         if _time_last.elapsed() > MAX_TIME {
-            warn!(
-                "|{:>20}| Widget pattern : {} timeout ==========> ",
-                thread::current().name().unwrap(),
-                pattern
-            );
             _alive = false;
             duration = Duration::from_millis(1000);
         } else {
@@ -259,25 +192,17 @@ async fn receiver(mut rx: broadcast::Receiver<RedisEvent>, pattern: &str) {
                 if topic.starts_with(pattern) {
                     _time_last = std::time::Instant::now();
                     info!(
-                        "|{:>20}| Widget pattern : {} topic: {}, message: {}",
-                        thread::current().name().unwrap(),
-                        pattern,
-                        topic,
-                        message
+                        "Widget pattern : {} topic: {}, message: {}",
+                        pattern, topic, message
                     );
                 }
             }
             Ok(Err(e)) => {
-                error!("|{:>20}| error: {}", thread::current().name().unwrap(), e);
+                error!(" error: {}", e);
             }
             Ok(Ok(RedisEvent::Stop)) => {}
             Err(e) => {
-                error!(
-                    "|{:>20}| timeout : {} {} ",
-                    thread::current().name().unwrap(),
-                    pattern,
-                    e
-                );
+                error!("timeout : {} {} ", pattern, e);
             }
         }
     }
