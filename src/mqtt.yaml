@@ -5,21 +5,23 @@ redis:
   host: "pcthink.local"
   port: 6379
 
-frame_heap-shaker1:
-  suffix: "Bytes"
+label_heap-shaker1:
+  suffix: " Bytes"
   prefix: "Shaker1 Heap : "
   pos: [0,0]
+  size: [30,200]
   src_topic: "src/shaker1/system/heap"
-frame_heap-shaker2:
-  suffix: "Bytes"
-  prefix: "Shaker2 Heap : "
+button_shake:
+  label: "Shake"
   pos: [3,3]
-  src_topic: "src/shaker2/system/heap"
-frame_heap-shaker3:
-  suffix: "Bytes"
-  prefix: "Heap : "
+  size: [30,300]
+  dst_topic: "dst/shaker2/shaker/shake"
+label_shaker1-latency:
+  suffix: " usec"
+  prefix: "Latency : "
   pos: [6,6]
-  src_topic: "src/shaker2/system/heap"
+  size: [30,200]
+  src_topic: "src/shaker1/system/latency"
 
 
   

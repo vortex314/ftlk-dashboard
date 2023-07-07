@@ -12,7 +12,7 @@ use tokio::{sync::mpsc, task};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
-struct PublishMessage {
+pub struct PublishMessage {
     topic: String,
     message: String,
 }
@@ -21,6 +21,12 @@ struct PublishMessage {
 pub enum RedisEvent {
     Publish { topic: String, message: String },
     Stop,
+}
+
+pub enum RedisCmd {
+    Stop,
+    Publish { topic: String, message: String },
+    Subscribe { topic : String }
 }
 
 pub async fn redis(config: Value, tx_broadcast: broadcast::Sender<RedisEvent>) {
