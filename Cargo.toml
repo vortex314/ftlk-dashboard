@@ -9,6 +9,7 @@ tokio = { version = "1", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["full"] }
 fltk = { version = "^1.4", features = [] }
 fltk-grid = "0.3.1"
+fltk-table = "0.3.0"
 regex = "*"
 serde = "1.0.163" # for a turtle description
 serde_yaml = "0.9.21" # for a yaml description

@@ -8,21 +8,24 @@ use regex::Regex;
 
 #[macro_use]
 extern crate log;
-use fltk::app::{awake, App};
+use fltk::app::{awake, redraw, App};
 use fltk::enums::Color;
 use fltk::enums::Event;
+use fltk::group::{Group, Tabs};
 use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
 use fltk_grid::Grid;
+use fltk_table::{SmartTable, TableOpts};
 
 use log::{debug, error, info, trace, warn};
+use serde_yaml::mapping::Entry;
 use serde_yaml::Value;
 use simplelog::SimpleLogger;
-use tokio::task::block_in_place;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::*;
+use tokio::task::block_in_place;
 //use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
@@ -36,10 +39,21 @@ use tokio_stream::StreamExt;
 mod redis_bridge;
 use redis_bridge::{redis, PublishMessage, RedisCmd, RedisEvent};
 mod my_logger;
+mod table_redis;
 use std::env;
+use table_redis::EntryList;
 
 // use the extension you require!
 const PATH: &str = "src/mqtt.yaml";
+const H_PIXEL: i32 = 1024;
+const V_PIXEL: i32 = 768;
+
+struct TableEntry {
+    topic: String,
+    message: String,
+    time: String,
+    count: u32,
+}
 
 fn load_yaml_file(path: &str) -> BTreeMap<String, Value> {
     let mut file = File::open(path).expect("Unable to open file");
@@ -110,15 +124,11 @@ fn value_string_default(object: &Value, key: &str, default: &str) -> String {
 }
 
 trait PubSubWidget {
-    fn new(
-        grid: &mut Grid,
-        config: &Value,
-        tx_redis_cmd: Sender<RedisCmd>,
-    ) -> Self where Self:Sized;
+    fn new(grid: &mut Grid, config: &Value, tx_redis_cmd: Sender<RedisCmd>) -> Self
+    where
+        Self: Sized;
     fn on_publish(&mut self, topic: &String, message: &String);
 }
-
-
 
 struct PubButton {
     button: Button,
@@ -127,11 +137,7 @@ struct PubButton {
 }
 
 impl PubSubWidget for PubButton {
-    fn new(
-        grid: &mut Grid,
-        config: &Value,
-        tx_redis_cmd: Sender<RedisCmd>,
-    ) -> PubButton {
+    fn new(grid: &mut Grid, config: &Value, tx_redis_cmd: Sender<RedisCmd>) -> PubButton {
         info!("creating PubButton");
         let mut button = Button::default();
         let dst_topic = value_string_default(config, "dst_topic", "unknown dst_topic");
@@ -143,24 +149,22 @@ impl PubSubWidget for PubButton {
         button.set_size(wx, wy);
         let mut topic = dst_topic.clone();
 
-        button.set_callback(   move |_| {
-            let message= String::from("1");
-            info!("sending {} => {:?}", topic.clone(),message);
+        button.set_callback(move |_| {
+            let message = String::from("1");
+            info!("sending {} => {:?}", topic.clone(), message);
             let topic = topic.clone();
             let cmd = RedisCmd::Publish { topic, message };
             let _ = tx_redis_cmd.send(cmd);
         });
 
-        PubButton { button,
+        PubButton {
+            button,
             dst_topic,
             label,
         }
     }
-    fn on_publish(&mut self, topic: &String, message: &String) {
-    }
+    fn on_publish(&mut self, topic: &String, message: &String) {}
 }
-
-
 
 struct SubLabel {
     frame: Frame,
@@ -170,11 +174,7 @@ struct SubLabel {
 }
 
 impl PubSubWidget for SubLabel {
-    fn new(
-        grid: &mut Grid,
-        config: &Value,
-        tx_redis_cmd: Sender<RedisCmd>,
-    ) -> SubLabel {
+    fn new(grid: &mut Grid, config: &Value, tx_redis_cmd: Sender<RedisCmd>) -> SubLabel {
         info!("creating SubLabel");
         let mut frame = Frame::default();
         frame.set_label("_+_");
@@ -192,7 +192,7 @@ impl PubSubWidget for SubLabel {
     }
     fn on_publish(&mut self, topic: &String, message: &String) {
         if self.src_topic == *topic {
-            let l = format!("{}{}{}",self.prefix,message,self.suffix );
+            let l = format!("{}{}{}", self.prefix, message, self.suffix);
             self.frame.set_label(l.as_str());
         }
     }
@@ -203,7 +203,7 @@ fn window_fill(
     config: BTreeMap<String, Value>,
     tx_redis_cmd: Sender<RedisCmd>,
 ) -> Vec<Box<dyn PubSubWidget>> {
-    let mut v:Vec<Box<dyn PubSubWidget>> = Vec::new();
+    let mut v: Vec<Box<dyn PubSubWidget>> = Vec::new();
     for (config_key, config_value) in config.iter() {
         let mut position = (0, 0);
         let (widget, id) = split_underscore(config_key);
@@ -236,7 +236,7 @@ async fn main() {
     let config = Box::new(load_yaml_file(PATH));
 
     let (mut tx_publish, mut rx_publish) = broadcast::channel::<RedisEvent>(16);
-    let (mut tx_redis_cmd, mut rx_redis_cmd) = bounded(16);
+    let (mut tx_redis_cmd, mut rx_redis_cmd) = bounded::<RedisCmd>(16);
 
     let redis_config = config["redis"].clone();
 
@@ -248,28 +248,78 @@ async fn main() {
     let mut _app = app::App::default();
     let config = config.clone();
     let mut win = window::Window::default()
-        .with_size(1024, 768)
+        .with_size(H_PIXEL, V_PIXEL)
         .center_screen()
         .with_label("Hello from rust");
+    /*
     let mut grid = Grid::default_fill();
     grid.set_layout(16, 10);
     grid.debug(true);
     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
     grid.end();
+    */
+    let mut entry_list = EntryList::new();
+    let tab = Tabs::new(0, 0, H_PIXEL, V_PIXEL, "");
+    let grp = group::Group::new(0, 0, H_PIXEL, V_PIXEL, "");
+    let mut table = SmartTable::default()
+        .with_size(H_PIXEL, V_PIXEL)
+        .center_of_parent()
+        .with_opts(TableOpts {
+            rows: 30,
+            cols: 4,
+            editable: true,
+            ..Default::default()
+        });
+    table.set_col_header(true);
+    table.set_row_header(false);
+    table.set_rows(30);
+    table.set_cols(4);
+    table.set_col_header_value(0, "Topic");
+    table.set_col_header_value(1, "Message");
+    table.set_col_header_value(2, "Time");
+    table.set_col_header_value(3, "Count");
+    table.set_row_height_all(30);
+    let widths = vec![300, 300, 224, 200];
+    for (i, w) in widths.iter().enumerate() {
+        table.set_col_width(TryInto::<i32>::try_into(i).unwrap(), *w);
+    }
+
+    table.set_col_resize(true);
+    table.set_row_resize(true);
+    table.set_col_header_height(30);
+    table.set_row_header_width(100);
+
     win.end();
     win.show();
 
     let sub = rx_publish.resubscribe();
     while _app.wait() {
+        let mut received = false;
         while let Ok(x) = rx_publish.try_recv() {
             match x {
                 RedisEvent::Publish { topic, message } => {
-                    for w in & mut widgets {
-                        w.on_publish(&topic,&message); 
-                    }
+                    entry_list.add(topic, message);
+                    received = true;
                 }
                 _ => {}
             }
+        }
+        if received {
+            let mut row = 0;
+            // table.clear();
+            for entry in entry_list.entries.iter() {
+                //   info!("{} {} {} {}", row,entry.topic, entry.value, entry.time.time());
+                table.set_cell_value(row, 0, entry.topic.as_str());
+                table.set_cell_value(row, 1, entry.value.as_str());
+                table.set_cell_value(
+                    row,
+                    2,
+                    &format!("{}", entry.time.time().format("%H:%M:%S%.3f").to_string()),
+                );
+                table.set_cell_value(row, 3, &format!("{}", entry.count));
+                row += 1;
+            }
+            table.redraw();
         }
     }
 }
