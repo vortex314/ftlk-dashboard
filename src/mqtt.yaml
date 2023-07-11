@@ -9,7 +9,7 @@ label_heap-shaker1:
   suffix: " Bytes"
   prefix: "Shaker1 Heap : "
   pos: [0,0]
-  size: [30,200]
+  size: [30,100]
   src_topic: "src/shaker1/system/heap"
 button_shake:
   label: "Shake"

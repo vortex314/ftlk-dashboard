@@ -177,7 +177,10 @@ impl PubSubWidget for SubLabel {
     fn new(grid: &mut Grid, config: &Value, tx_redis_cmd: Sender<RedisCmd>) -> SubLabel {
         info!("creating SubLabel");
         let mut frame = Frame::default();
-        frame.set_label("_+_");
+        let src_topic = value_string_default(config, "src_topic", "");
+        let prefix=  value_string_default(config, "prefix", "");
+        let suffix = value_string_default(config, "suffix", "");
+        frame.set_label(&src_topic);
         let (x, y) = get_pos(config).unwrap();
         let (wy, wx) = get_size(config).unwrap();
         grid.insert(&mut frame, y, x);
@@ -185,9 +188,9 @@ impl PubSubWidget for SubLabel {
 
         SubLabel {
             frame,
-            src_topic: value_string_default(config, "src_topic", ""),
-            prefix: value_string_default(config, "prefix", ""),
-            suffix: value_string_default(config, "suffix", ""),
+            src_topic,
+            prefix,
+            suffix,
         }
     }
     fn on_publish(&mut self, topic: &String, message: &String) {
@@ -252,42 +255,54 @@ async fn main() {
         .center_screen()
         .with_label("Hello from rust");
     /*
-    let mut grid = Grid::default_fill();
-    grid.set_layout(16, 10);
-    grid.debug(true);
-    let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
-    grid.end();
+
     */
     let mut entry_list = EntryList::new();
     let tab = Tabs::new(0, 0, H_PIXEL, V_PIXEL, "");
-    let grp = group::Group::new(0, 0, H_PIXEL, V_PIXEL, "");
-    let mut table = SmartTable::default()
-        .with_size(H_PIXEL, V_PIXEL)
-        .center_of_parent()
-        .with_opts(TableOpts {
-            rows: 30,
-            cols: 4,
-            editable: true,
-            ..Default::default()
-        });
-    table.set_col_header(true);
-    table.set_row_header(false);
-    table.set_rows(30);
-    table.set_cols(4);
-    table.set_col_header_value(0, "Topic");
-    table.set_col_header_value(1, "Message");
-    table.set_col_header_value(2, "Time");
-    table.set_col_header_value(3, "Count");
-    table.set_row_height_all(30);
-    let widths = vec![300, 300, 224, 200];
-    for (i, w) in widths.iter().enumerate() {
-        table.set_col_width(TryInto::<i32>::try_into(i).unwrap(), *w);
+    
+        let grp = group::Group::new(20, 20, H_PIXEL - 20, V_PIXEL - 20, "Table");
+        let mut table = SmartTable::default()
+            .with_size(H_PIXEL - 20, V_PIXEL - 20)
+            .center_of_parent()
+            .with_opts(TableOpts {
+                rows: 30,
+                cols: 4,
+                editable: true,
+                ..Default::default()
+            });
+        table.set_col_header(true);
+        table.set_row_header(false);
+        table.set_rows(30);
+        table.set_cols(4);
+        table.set_col_header_value(0, "Topic");
+        table.set_col_header_value(1, "Message");
+        table.set_col_header_value(2, "Time");
+        table.set_col_header_value(3, "Count");
+        table.set_row_height_all(30);
+        let widths = vec![300, 300, 200, 180];
+        for (i, w) in widths.iter().enumerate() {
+            table.set_col_width(TryInto::<i32>::try_into(i).unwrap(), *w);
+        }
+
+        table.set_col_resize(true);
+        table.set_row_resize(true);
+        table.set_col_header_height(30);
+        table.set_row_header_width(100);
+
+        table.end();
+        grp.end();
+    
+    {
+        let grp1 = group::Group::new(20, 20, H_PIXEL - 40, V_PIXEL - 40, "Dashboard");
+        let mut grid = Grid::default_fill();
+        grid.set_layout(16, 10);
+        grid.debug(true);
+        let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
+        grid.end();
+        grp1.end();
     }
 
-    table.set_col_resize(true);
-    table.set_row_resize(true);
-    table.set_col_header_height(30);
-    table.set_row_header_width(100);
+    tab.end();
 
     win.end();
     win.show();
@@ -305,6 +320,7 @@ async fn main() {
             }
         }
         if received {
+            table.set_rows(entry_list.entries.len().try_into().unwrap());
             let mut row = 0;
             // table.clear();
             for entry in entry_list.entries.iter() {
