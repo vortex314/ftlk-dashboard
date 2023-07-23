@@ -16,6 +16,6 @@ serde_yaml = "0.9.21" # for a yaml description
 log = "0.4.14" # for logging
 simplelog = "0.12.1" # for logging
 env_logger = "0.10.0"
-crossbeam = "0.8.0" # for crossbeam_channel
 redis = { git = "https://github.com/redis-rs/redis-rs", branch = "resp3",features = ["tokio-comp"] }
 chrono = "0.4.19" # for time
+mqtt-async-client = "0.3.1" # for mqtt

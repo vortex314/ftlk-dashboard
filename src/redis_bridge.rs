@@ -3,33 +3,17 @@ use log::{debug, error, info, trace, warn};
 use serde_yaml::Value;
 
 use fltk::app::{awake, App};
-use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
+use crate::pubsub_widget::*;
 use std::fmt::Error;
 use std::thread::{self, sleep, Thread};
 use tokio::sync::broadcast;
 use tokio::time::{self, Duration};
 use tokio::{sync::mpsc, task};
 use tokio_stream::StreamExt;
+use crate::pubsub_widget::*;
 
-#[derive(Debug, Clone)]
-pub struct PublishMessage {
-    topic: String,
-    message: String,
-}
 
-#[derive(Debug, Clone)]
-pub enum RedisEvent {
-    Publish { topic: String, message: String },
-    Stop,
-}
-
-pub enum RedisCmd {
-    Stop,
-    Publish { topic: String, message: String },
-    Subscribe { topic : String }
-}
-
-pub async fn redis(config: Value, tx_broadcast: broadcast::Sender<RedisEvent>) {
+pub async fn redis(config: Value, tx_broadcast: broadcast::Sender<PubSubEvent>) {
     loop {
         let url = format!(
             "redis://{}:{}/",
@@ -73,7 +57,7 @@ pub async fn redis(config: Value, tx_broadcast: broadcast::Sender<RedisEvent>) {
                 msg.get_channel_name().to_string(),
             );
             awake();
-            match tx_broadcast.send(RedisEvent::Publish {
+            match tx_broadcast.send(PubSubEvent::Publish {
                 topic: msg.get_channel_name().to_string(),
                 message: msg.get_payload().unwrap(),
             }) {
