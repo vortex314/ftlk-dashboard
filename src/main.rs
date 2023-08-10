@@ -39,78 +39,16 @@ use tokio::sync::mpsc::{Sender,Receiver,channel};
 use tokio::task;
 use tokio_stream::StreamExt;
 
-mod redis_bridge;
-mod my_logger;
-mod table_redis;
-mod pubsub_widget;
-mod sub_label;
-mod pub_button;
-use table_redis::EntryList;
-use pubsub_widget::{PubSubWidget,get_pos,get_size,split_underscore,value_string_default, PubSubEvent, PubSubCmd};
-use pub_button::PubButton;
-use sub_label::SubLabel;
-use redis_bridge::redis;
-mod mqtt_bridge;
-use mqtt_bridge::mqtt;
-
-// use the extension you require!
-const PATH: &str = "src/mqtt.yaml";
-const H_PIXEL: i32 = 1024;
-const V_PIXEL: i32 = 768;
-
-struct TableEntry {
-    topic: String,
-    message: String,
-    time: String,
-    count: u32,
-}
-
-fn load_yaml_file(path: &str) -> BTreeMap<String, Value> {
-    let mut file = File::open(path).expect("Unable to open file");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .expect("Unable to read file");
-    let v: BTreeMap<String, Value> = serde_yaml::from_str(&contents).expect("Unable to parse YAML");
-    v
-}
-
-
-fn window_fill(
-    grid: &mut Grid,
-    config: BTreeMap<String, Value>,
-    tx_redis_cmd: tokio::sync::mpsc::Sender<PubSubCmd>,
-) -> Vec<Box<dyn PubSubWidget>> {
-    let mut v: Vec<Box<dyn PubSubWidget>> = Vec::new();
-    for (config_key, config_value) in config.iter() {
-        let mut position = (0, 0);
-        let (widget, id) = split_underscore(config_key);
-        let params = config_value;
-        info!(
-            " creating {}___{}",
-            widget.unwrap_or("unknown"),
-            id.unwrap_or("unknown")
-        );
-        match widget.unwrap() {
-            "label" => {
-                v.push(Box::new(SubLabel::new(grid, params, tx_redis_cmd.clone())));
-            }
-            "button" => {
-                v.push(Box::new(PubButton::new(grid, params, tx_redis_cmd.clone())));
-            }
-            _ => {}
-        }
-    }
-    v
-}
+use logger::init_logger;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
 async fn main() {
     env::set_var("RUST_LOG", "info");
-    my_logger::init();
+    init_logger();
     //   let _ = SimpleLogger::init(log::LevelFilter::Info, simplelog::Config::default());
     info!("Starting up. Reading config file {}.", PATH);
 
-    let config = Box::new(load_yaml_file(PATH));
+ /*    let config = Box::new(load_yaml_file(PATH));
 
     let (mut tx_publish, mut rx_publish) = broadcast::channel::<PubSubEvent>(16);
     let (mut tx_redis_cmd, mut rx_redis_cmd) = channel::<PubSubCmd>(16);
@@ -133,9 +71,7 @@ async fn main() {
         .with_size(H_PIXEL, V_PIXEL)
         .center_screen()
         .with_label("Hello from rust");
-    /*
-
-    */
+ 
     let mut entry_list = EntryList::new();
     let tab = Tabs::new(0, 0, H_PIXEL, V_PIXEL, "");
     
@@ -219,7 +155,7 @@ async fn main() {
             }
             table.redraw();
         }
-    }
+    }*/
 }
 
 // async channel receiver
