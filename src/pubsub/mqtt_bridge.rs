@@ -5,7 +5,6 @@ use serde_yaml::Value;
 use std::collections::BTreeMap;
 use std::fmt::Error;
 use std::thread::{self, sleep, Thread};
-mod crate::config;
 use config::{
     get_pos, get_size, value_string_default
 };
