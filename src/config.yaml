@@ -1,0 +1,74 @@
+widget: Frame
+children:
+- widget: Button
+  label: Inc
+  fixed: 60
+  id: inc
+  pos: [0,0]
+  x: 100
+  y: 100
+  w: 100
+  h: 30
+  size: [30,100]
+  labelcolor: "#0000ff"
+- widget: HorValueSlider
+  label: Dec
+  fixed: 60
+  id: dec
+  slidersize: 0.01
+  x: 200
+  y: 100
+  w: 300
+  h: 50
+  minimum: 0
+  maximum: 100
+  labelcolor: "#0000ff"
+  resizable: true
+- widget: Frame
+  resizable: true
+  border: true
+  color: "#ff0000"
+  tooltip: "This is a tooltip"
+  children:
+  - widget: Dial
+    label: Dec
+    fixed: 60
+    id: dec
+    pos: [0,0]
+    slidersize: 50
+    x: 300
+    y: 300
+    w: 60
+    h: 60
+    minimum: 0
+    maximum: 100
+    size: [30,100]
+    labelcolor: "#0000ff"
+    resizable: true
+mqtt:
+  host: "pcthink.local"
+  port: 1883
+redis:
+  host: "pcthink.local"
+  port: 6379
+
+label_heap-shaker1:
+  suffix: " Bytes"
+  prefix: "Shaker1 Heap : "
+  pos: [0,0]
+  size: [30,100]
+  src_topic: "src/shaker1/system/heap"
+button_shake:
+  label: "Shake"
+  pos: [3,3]
+  size: [30,300]
+  dst_topic: "dst/shaker2/shaker/shake"
+label_shaker1-latency:
+  suffix: " usec"
+  prefix: "Latency : "
+  pos: [6,6]
+  size: [30,200]
+  src_topic: "src/shaker1/system/latency"
+
+
+  

@@ -22,6 +22,7 @@ use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
+use fltk::app::AppScheme;
 //==================================================================================================
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -41,19 +42,33 @@ use tokio_stream::StreamExt;
 
 mod logger;
 mod pubsub;
+mod config;
+mod store;
+mod decl;
 use logger::init_logger;
-use pubsub::{PubSubEvent, PubSubCmd};
+use store::sub_table::EntryList;
+use pubsub::{PubSubEvent, PubSubCmd,mqtt_bridge,redis_bridge};
 
 const PATH : &str = "src/config.yaml";
+const H_PIXEL : i32 = 800;
+const V_PIXEL : i32 = 600;
+
+use decl::DeclarativeApp;
+use decl::Widget;
+
+fn load_fn(path: &'static str) -> Option<Widget> {
+    let s = std::fs::read_to_string(path).ok()?;
+    // We want to see the serde error on the command line while we're developing
+    serde_yaml::from_str(&s).map_err(|e| eprintln!("{e}")).ok()
+}
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
 async fn main() {
     env::set_var("RUST_LOG", "info");
     init_logger();
-    //   let _ = SimpleLogger::init(log::LevelFilter::Info, simplelog::Config::default());
     info!("Starting up. Reading config file {}.", PATH);
 
- /*    let config = Box::new(load_yaml_file(PATH));
+    let config = Box::new(config::load_yaml_file(PATH));
 
     let (mut tx_publish, mut rx_publish) = broadcast::channel::<PubSubEvent>(16);
     let (mut tx_redis_cmd, mut rx_redis_cmd) = channel::<PubSubCmd>(16);
@@ -63,14 +78,16 @@ async fn main() {
     let bc = tx_publish.clone();
 
     tokio::spawn(async move {
-        redis(redis_config, tx_publish).await;
+        mqtt_bridge::mqtt(redis_config, tx_publish).await;
     });
     tokio::spawn(async move {
-        mqtt(mqtt_config, bc).await;
+        mqtt_bridge::mqtt(mqtt_config, bc).await;
     });
     info!("Starting up fltk");
-
-    let mut _app = app::App::default();
+    DeclarativeApp::new(1024, 768, "MyApp", "src/config.yaml", load_fn)
+    .run(|_| {})
+    .unwrap();
+/*     let mut _app = App::default().with_scheme(AppScheme::Gtk);
     let config = config.clone();
     let mut win = window::Window::default()
         .with_size(H_PIXEL, V_PIXEL)
@@ -117,7 +134,7 @@ async fn main() {
         let mut grid = Grid::default_fill();
         grid.set_layout(16, 10);
         grid.debug(true);
-        let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
+   //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
         grid.end();
         grp1.end();
     }
@@ -136,7 +153,6 @@ async fn main() {
                     entry_list.add(topic, message);
                     received = true;
                 }
-                _ => {}
             }
         }
         if received {
@@ -162,6 +178,8 @@ async fn main() {
         }
     }*/
 }
+
+
 
 // async channel receiver
 async fn receiver(mut rx: broadcast::Receiver<PubSubEvent>, pattern: &str) {
@@ -192,7 +210,6 @@ async fn receiver(mut rx: broadcast::Receiver<PubSubEvent>, pattern: &str) {
             Ok(Err(e)) => {
                 error!(" error: {}", e);
             }
-            Ok(Ok(PubSubEvent::Quit)) => {}
             Err(e) => {
                 error!("timeout : {} {} ", pattern, e);
             }

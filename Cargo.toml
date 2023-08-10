@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["full"] }
-fltk = { version = "^1.4", features = [] }
+fltk = { version = "1.4.9", features = [] }
 fltk-grid = "0.3.1"
 fltk-table = "0.3.0"
 regex = "*"
@@ -19,3 +19,5 @@ env_logger = "0.10.0"
 redis = { git = "https://github.com/redis-rs/redis-rs", branch = "resp3",features = ["tokio-comp"] }
 chrono = "0.4.19" # for time
 mqtt-async-client = "0.3.1" # for mqtt
+notify = "5.1"
+serde_derive = "1"
