@@ -246,8 +246,16 @@ where
     }
 }
 
+mod widget;
+use widget::*;
+
 pub(crate) fn transform(w: &Widget) {
     match w.widget.as_str() {
+        "Gauge" => {
+            let mut g = widget::gauge::Gauge::new(400,400,150,150,"gauge");
+            g.set_value(50);
+        //    handle_w(w, &mut g);
+        }
         "Column" => {
             let mut c = group::Flex::default_fill().column();
             handle_w(w, &mut c);

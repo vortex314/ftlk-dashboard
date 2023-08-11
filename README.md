@@ -59,3 +59,80 @@ https://github.com/sdt/docker-raspberry-pi-cross-compiler
 + Nice build and library system to re-use what others created 
 - didn't find an equivalent of libuv that integrates with async/await pattern
 - Rust avoid the shoot in the foot scenario's like C++, by parelizing the developer and remove any arms. 
+
+# My struggles to get a GUI 
+1. I can use in RUST 
+2. that permits to create a highly dynamic composable dashboard
+- is config driven
+- is hot reloadable
+- is composable
+- is customisable
+- is extensible
+- is easy to use
+3. uses a pubsub mechanism to communicate with the outside world
+4. that has base widgets for :
+- gauges
+- meters
+- switches
+- compass
+- graphs
+- text
+- images
+- video
+- buttons
+- sliders
+- knobs
+- ...
+5. runs on Raspberry Pi B if possible 
+### Some examples
+https://priidash.sourceforge.net/#SetupText
+https://images.squarespace-cdn.com/content/v1/5e7135caec915516f2aaf65b/1585586605207-7FLIYPZ93HYFMIFDW0LD/dashboard2.png?format=1500w
+https://www.vtscada.com/wp-content/uploads/2015/02/VTScada11_Generator2.png
+https://www.vtscada.com/wp-content/uploads/2015/02/VTScada_GeneratorDashboard.png
+
+## What I tried and getting run in circles to find a fit
+### FLTK ++
+- FLTK is a C++ library that has a Rust wrapper
+- very good support by Mo and recent updates
+- very good documentation
+- very good examples
+- limited widgets for what I need
+### LVGL ++
+- LVGL is a C library that has a Rust wrapper
+- very good support and recent updates
+- very good documentation
+- very good examples
+- quirks in RUST as it expects static allocated styles
+- extended list of widgets
+- meter widget in rust no example as broken
+### EGUI
+- EGUI is a Rust library
+- very good support and recent updates
+- limited documentation
+- good widgets but not enough
+- easy to make it hot reloadable and dynamic
+- missing fine-grained control and positioning of widgets
+### IUP ???
+- IUP is a C library that has a Rust wrapper
+### GTK
+- GTK is a C library that has a Rust wrapper
+- very good support and recent updates
+- found some good industrial widgets
+- very good documentation
+### QT
+- QT is a C++ library that has a Rust wrapper
+- very good support and recent updates
+- very good documentation
+- too big to handle
+### NANNOU - suggested by Copilot
+- NANNOU is a Rust library
+- very good support and recent updates
+- not impressed by widgets
+### IMGUI 
+- IMGUI is a C library that has a Rust wrapper
+- very good support and recent updates
+### DEAR IMGUI
+- DEAR IMGUI is a C library that has a Rust wrapper
+- very good support and recent updates
+### No more suggestion from Copilot
+

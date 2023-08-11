@@ -30,21 +30,24 @@ children:
   color: "#ff0000"
   tooltip: "This is a tooltip"
   children:
-  - widget: Dial
-    label: Dec
+  - widget: FillDial
+    label: FillDIal
+    label_size: 24
     fixed: 60
     id: dec
     pos: [0,0]
     slidersize: 50
     x: 300
     y: 300
-    w: 60
-    h: 60
+    w: 160
+    h: 160
     minimum: 0
     maximum: 100
     size: [30,100]
     labelcolor: "#0000ff"
     resizable: true
+  - widget: Gauge
+    label: Gauge
 mqtt:
   host: "pcthink.local"
   port: 1883
