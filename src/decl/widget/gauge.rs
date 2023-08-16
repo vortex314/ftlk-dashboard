@@ -2,6 +2,8 @@ use fltk::{enums::*, prelude::*, *};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::decl::Widget;
+
 #[derive(Debug, Clone)]
 pub struct Gauge {
     main_wid: group::Group,
@@ -58,10 +60,23 @@ impl Gauge {
         self.value_frame.set_label(&val.to_string());
         self.main_wid.redraw();
     }
+
+    pub fn set_widget_params(&mut self, widget: &Widget) {
+        widget
+            .label
+            .as_ref()
+            .map(|label| self.main_wid.set_label(label));
+        widget.labelcolor.as_ref().map(|labelcolor| {
+            if let Ok(col) = enums::Color::from_hex_str(labelcolor) {
+                self.main_wid.set_label_color(col);
+            }
+        });
+    }
 }
 
 widget_extends!(Gauge, group::Group, main_wid);
-/* 
+
+/*
 fn main() {
     let app = app::App::default();
     app::background(255, 255, 255);

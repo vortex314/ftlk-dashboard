@@ -1,4 +1,3 @@
-
 use fltk::{prelude::*, *};
 use notify::{
     event::{AccessKind, AccessMode, DataChange, EventKind, ModifyKind},
@@ -76,7 +75,6 @@ pub(crate) fn get_frame(s: &str) -> Option<usize> {
     FRAMES.iter().position(|&x| x == s)
 }
 
-
 use fltk::{prelude::*, *};
 
 macro_rules! handle_text {
@@ -101,6 +99,14 @@ pub(crate) fn handle_w<T>(w: &Widget, widget: &mut T)
 where
     T: Clone + Send + Sync + WidgetExt + 'static,
 {
+    if let Some(size) = &w.size {
+        info!("size: {:?}", size);
+        widget.set_size(size[0] * 32, size[1] * 32);
+    }
+    if let Some(pos) = &w.pos {
+        info!("pos: {:?}", pos);
+        widget.set_pos(pos[0] * 32, pos[1] * 32);
+    }
     if let Some(id) = &w.id {
         widget.set_id(id);
     }
@@ -252,9 +258,18 @@ use widget::*;
 pub(crate) fn transform(w: &Widget) {
     match w.widget.as_str() {
         "Gauge" => {
-            let mut g = widget::gauge::Gauge::new(400,400,150,150,"gauge");
-            g.set_value(50);
-        //    handle_w(w, &mut g);
+            if let Some(pos) = &w.pos {
+                let size = w.size.as_ref().unwrap();
+                info!("pos: {:?}", pos);
+                let mut g = widget::gauge::Gauge::new(
+                    pos[0] * 32,
+                    pos[1]*32,
+                    size[0]*32,
+                    size[1]*32,
+                    "gauge",
+                );
+                g.set_widget_params(w);
+            }
         }
         "Column" => {
             let mut c = group::Flex::default_fill().column();
@@ -522,7 +537,6 @@ pub(crate) fn transform(w: &Widget) {
     };
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Widget {
     widget: String,
@@ -564,6 +578,8 @@ pub struct Widget {
     top: Option<i32>,
     right: Option<i32>,
     bottom: Option<i32>,
+    pos: Option<Vec<i32>>,
+    size: Option<Vec<i32>>,
 }
 
 /// Entry point for your declarative app

@@ -1,53 +1,27 @@
 widget: Frame
 children:
 - widget: Button
-  label: Inc
-  fixed: 60
+  label: Button1
   id: inc
-  pos: [0,0]
-  x: 100
-  y: 100
-  w: 100
-  h: 30
-  size: [30,100]
+  pos: [1,1]
+  size: [3,1]
   labelcolor: "#0000ff"
 - widget: HorValueSlider
-  label: Dec
-  fixed: 60
-  id: dec
-  slidersize: 0.01
-  x: 200
-  y: 100
-  w: 300
-  h: 50
-  minimum: 0
-  maximum: 100
+  label: Slider
+  id: inc
+  pos: [6,3]
+  size: [10,1]
   labelcolor: "#0000ff"
-  resizable: true
-- widget: Frame
-  resizable: true
-  border: true
-  color: "#ff0000"
-  tooltip: "This is a tooltip"
-  children:
-  - widget: FillDial
-    label: FillDIal
-    label_size: 24
-    fixed: 60
-    id: dec
-    pos: [0,0]
-    slidersize: 50
-    x: 300
-    y: 300
-    w: 160
-    h: 160
-    minimum: 0
-    maximum: 100
-    size: [30,100]
-    labelcolor: "#0000ff"
-    resizable: true
-  - widget: Gauge
-    label: Gauge
+- widget: Gauge
+  label: Gauge
+  id: inc
+  pos: [3,4]
+  size: [5,5]
+  labelcolor: "#0000ff"
+
+screen:
+  - resolution: [1024,768]
+    grid: [16,12]
 mqtt:
   host: "pcthink.local"
   port: 1883
