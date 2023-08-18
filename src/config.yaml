@@ -13,9 +13,9 @@ children:
   size: [10,1]
   labelcolor: "#0000ff"
 - widget: Gauge
-  label: Gauge
+  label: RPM
   id: inc
-  pos: [3,4]
+  pos: [3,5]
   size: [5,5]
   labelcolor: "#0000ff"
 

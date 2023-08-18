@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::decl::Widget;
+use crate::decl::PubSubWidget;
 
 #[derive(Debug, Clone)]
 pub struct Gauge {
@@ -11,8 +12,55 @@ pub struct Gauge {
     value_frame: frame::Frame,
 }
 
+impl PubSubWidget for Gauge {
+    fn new(props: Widget) -> Self {
+        info!("Gauge::new()");
+        let size = props.size.unwrap_or(vec![10, 10]);
+        let pos = props.pos.unwrap_or(vec![0, 0]);
+        info!(" size : {:?} pos : {:?} ", size, pos);
+        let value = Rc::from(RefCell::from(0));
+        let title = props.label.unwrap_or("No Title".to_string());
+        let mut main_wid =
+            group::Group::new(pos[0] * 32, pos[1] * 32, size[0] * 32, size[1] * 32, None)
+                .with_label(title.as_str())
+                .with_align(Align::Top);
+        let mut value_frame =
+            frame::Frame::new(main_wid.x(), main_wid.y() + 80, main_wid.w(), 40, "0");
+        value_frame.set_label_size(26);
+        main_wid.end();
+        let value_c = value.clone();
+        main_wid.draw(move |w| {
+            draw::set_draw_rgb_color(230, 230, 230);
+            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), 0., 180.);
+            draw::set_draw_hex_color(0xb0bf1a);
+            draw::draw_pie(
+                w.x(),
+                w.y(),
+                w.w(),
+                w.h(),
+                (100 - *value_c.borrow()) as f64 * 1.8,
+                180.,
+            );
+            draw::set_draw_color(Color::White);
+            draw::draw_pie(
+                w.x() - 50 + w.w() / 2,
+                w.y() - 50 + w.h() / 2,
+                100,
+                100,
+                0.,
+                360.,
+            );
+            w.draw_children();
+        });
+        Self {
+            main_wid,
+            value,
+            value_frame,
+        }
+    }
+}
 impl Gauge {
-    pub fn new(x: i32, y: i32, w: i32, h: i32, label: &str) -> Self {
+    fn neww(x: i32, y: i32, w: i32, h: i32, label: &str) -> Self {
         info!("Gauge::new({},{},{},{},{})", x, y, w, h, label);
         let value = Rc::from(RefCell::from(0));
         let mut main_wid = group::Group::new(x, y, w, h, None)
@@ -61,7 +109,7 @@ impl Gauge {
         self.main_wid.redraw();
     }
 
-    pub fn set_widget_params(&mut self, widget: &Widget) {
+    pub fn configure(&mut self, widget: &Widget) {
         widget
             .label
             .as_ref()

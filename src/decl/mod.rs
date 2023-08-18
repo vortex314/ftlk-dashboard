@@ -258,18 +258,7 @@ use widget::*;
 pub(crate) fn transform(w: &Widget) {
     match w.widget.as_str() {
         "Gauge" => {
-            if let Some(pos) = &w.pos {
-                let size = w.size.as_ref().unwrap();
-                info!("pos: {:?}", pos);
-                let mut g = widget::gauge::Gauge::new(
-                    pos[0] * 32,
-                    pos[1]*32,
-                    size[0]*32,
-                    size[1]*32,
-                    "gauge",
-                );
-                g.set_widget_params(w);
-            }
+                let mut g = widget::gauge::Gauge::new(w.clone());
         }
         "Column" => {
             let mut c = group::Flex::default_fill().column();
