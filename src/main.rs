@@ -78,10 +78,10 @@ async fn main() {
     let bc = tx_publish.clone();
 
     tokio::spawn(async move {
-        mqtt_bridge::mqtt(redis_config, tx_publish).await;
+        mqtt_bridge::mqtt(mqtt_config, tx_publish).await;
     });
     tokio::spawn(async move {
-        mqtt_bridge::mqtt(mqtt_config, bc).await;
+        redis_bridge::redis(redis_config, bc).await;
     });
     info!("Starting up fltk");
     DeclarativeApp::new(1024, 768, "MyApp", "src/config.yaml", load_fn)

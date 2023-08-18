@@ -258,7 +258,10 @@ use widget::*;
 pub(crate) fn transform(w: &Widget) {
     match w.widget.as_str() {
         "Gauge" => {
-                let mut g = widget::gauge::Gauge::new(w.clone());
+            let mut g = widget::gauge::Gauge::new(w.clone());
+        }
+        "Status" => {
+            let mut g = widget::status::Status::new(w.clone());
         }
         "Column" => {
             let mut c = group::Flex::default_fill().column();
@@ -569,6 +572,11 @@ pub struct Widget {
     bottom: Option<i32>,
     pos: Option<Vec<i32>>,
     size: Option<Vec<i32>>,
+    src_topic: Option<String>,
+    dst_topic: Option<String>,
+    src_range: Option<Vec<f64>>,
+    dst_range: Option<Vec<f64>>,
+    src_timeout: Option<u128>,
 }
 
 /// Entry point for your declarative app

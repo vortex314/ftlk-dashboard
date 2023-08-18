@@ -1,23 +1,34 @@
 widget: Frame
+label: "Shaker2"
+pos: [0,0]
+size: [16,12]
 children:
+- widget: Status
+  label: "USB-serial"
+  pos: [0,0]
+  size: [30,100]
+  src_topic: "dst/ESP32-44592/sys/loopback"
+  src_timeout:  3000
 - widget: Button
   label: Button1
   id: inc
   pos: [1,1]
   size: [3,1]
   labelcolor: "#0000ff"
+  dst_topic: "dst/shaker2/shaker/shake"
+  dst_payload: "1"
 - widget: HorValueSlider
   label: Slider
-  id: inc
   pos: [6,3]
   size: [10,1]
   labelcolor: "#0000ff"
 - widget: Gauge
   label: RPM
-  id: inc
   pos: [3,5]
   size: [5,5]
   labelcolor: "#0000ff"
+  src_topic: "src/cutter/motor/rpm"
+  src_range: [0,10000]
 
 screen:
   - resolution: [1024,768]
