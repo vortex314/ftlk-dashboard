@@ -105,12 +105,13 @@ https://www.vtscada.com/wp-content/uploads/2015/02/VTScada_GeneratorDashboard.pn
 - quirks in RUST as it expects static allocated styles
 - extended list of widgets
 - meter widget in rust no example as broken
+- recompilation fails , breaks easily and is also based on the older lvgl version 0.6 , while version 0.8 is ongoing 
 ### EGUI
 - EGUI is a Rust library
 - very good support and recent updates
 - limited documentation
 - good widgets but not enough
-- easy to make it hot reloadable and dynamic
+- easy to make it hot reloadable and dynamic, positioning and coloring is a mess
 - missing fine-grained control and positioning of widgets
 ### IUP ???
 - IUP is a C library that has a Rust wrapper

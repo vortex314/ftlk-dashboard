@@ -20,7 +20,7 @@ impl PubSubWidget for Status {
         info!("Status::new()");
         let size = props.size.unwrap_or(vec![10, 10]);
         let pos = props.pos.unwrap_or(vec![0, 0]);
-        info!(" size : {:?} pos : {:?} ", size, pos);
+        info!("Status size : {:?} pos : {:?} ", size, pos);
         let value = Rc::from(RefCell::from(0.));
         let label = props.label.unwrap_or("No Title".to_string());
 
@@ -29,16 +29,12 @@ impl PubSubWidget for Status {
             pos[1] * 32,
             size[0] * 32,
             size[1] * 32,
-            label.as_str(),
+            None,
         );
-        let me = Status {
-            status_frame,
-            src_topic: props.src_topic.unwrap_or("".to_string()),
-            last_update: Rc::new(RefCell::new(0)),
-            src_timeout: props.src_timeout.unwrap_or(1000),
-        };
+    //    status_frame.set_label(label);
+
         status_frame.set_label_size(26);
-        status_frame.draw(move |w| {
+      /*   status_frame.draw(move |w| {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -48,8 +44,13 @@ impl PubSubWidget for Status {
             } else {
                 status_frame.set_label_color(Color::White);
             }
-        });
-
+        });*/
+        let me = Status {
+            status_frame,
+            src_topic: props.src_topic.unwrap_or("".to_string()),
+            last_update: Rc::new(RefCell::new(0)),
+            src_timeout: props.src_timeout.unwrap_or(1000),
+        };
         me
     }
     fn on(&mut self, event: PubSubEvent) {
@@ -58,6 +59,7 @@ impl PubSubWidget for Status {
                 if topic != self.src_topic {
                     return;
                 }
+                self.status_frame.set_color(Color::from_hex(0x00ff00));
             }
             _ => {}
         }

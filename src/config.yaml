@@ -1,12 +1,22 @@
+screen:
+  resolution: [1024,768]
+  grid: [32,24]
+mqtt:
+  host: "pcthink.local"
+  port: 1883
+redis:
+  host: "pcthink.local"
+  port: 6379
+
 widget: Frame
-label: "Shaker2"
+label: "Main Frame"
 pos: [0,0]
 size: [16,12]
 children:
 - widget: Status
   label: "USB-serial"
-  pos: [0,0]
-  size: [30,100]
+  pos: [0,6]
+  size: [3,1]
   src_topic: "dst/ESP32-44592/sys/loopback"
   src_timeout:  3000
 - widget: Button
@@ -30,15 +40,7 @@ children:
   src_topic: "src/cutter/motor/rpm"
   src_range: [0,10000]
 
-screen:
-  - resolution: [1024,768]
-    grid: [16,12]
-mqtt:
-  host: "pcthink.local"
-  port: 1883
-redis:
-  host: "pcthink.local"
-  port: 6379
+
 
 label_heap-shaker1:
   suffix: " Bytes"
