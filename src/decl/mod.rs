@@ -309,9 +309,6 @@ where
 
 pub(crate) fn transform(w: &DeclWidget) {
     match w.widget.as_str() {
-        "Gauge" => {
-            let mut g = Gauge::config(w.clone());
-        }
 
         "Column" => {
             let mut c = group::Flex::default_fill().column();

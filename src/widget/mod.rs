@@ -12,6 +12,7 @@ use serde_yaml::Value;
 
 pub mod status;
 pub mod gauge;
+pub mod sub_text;
 
 struct PubSubParams {
     src_topic: String,
@@ -21,7 +22,7 @@ struct PubSubParams {
 pub trait PubSubWidget {
     fn on(&mut self,event : PubSubEvent );
     fn set_publish_channel(&mut self,channel : mpsc::Sender<PubSubEvent>);
-    fn config(props:Value) -> Rc<RefCell<Self>>;
+    fn config(&mut self, props:Value) ;
 }
 
 

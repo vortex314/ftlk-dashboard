@@ -11,13 +11,13 @@ widgets:
   - widget: Status
     label: "USB-serial"
     pos: [6,1]
-    size: [4,1]
+    size: [4,2]
     src_topic: "src/USB0/system/alive"
     src_timeout:  3000
   - widget: Status
     label: "ESP32-Motor"
     pos: [10,1]
-    size: [4,1]
+    size: [4,2]
     src_topic: "dst/ESP32-44592/sys/loopback"
     src_timeout:  3000
   - widget: Status
@@ -25,6 +25,13 @@ widgets:
     pos: [14,1]
     size: [4,1]
     src_topic: "dst/UNKNWON/sys/loopback"
+    src_timeout:  3000
+  - widget: SubText
+    pos: [14,1]
+    size: [6,1]
+    src_topic: "dst/ESP32-44592/sys/loopback"
+    src_prefix: "latency = "
+    src_suffix: " ms"
     src_timeout:  3000
 
 

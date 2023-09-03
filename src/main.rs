@@ -55,6 +55,7 @@ use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::status::Status;
+use widget::sub_text::SubText;
 use widget::PubSubWidget;
 
 const PATH: &str = "src/config.yaml";
@@ -112,7 +113,8 @@ async fn main() {
     let mqtt_config = config["mqtt"].clone();
     let widgets_config = config["widgets"].clone();
     let bc = tx_publish.clone();
-    let widgets = Vec::new();
+   
+    let mut widgets:Vec<Rc<RefCell<dyn PubSubWidget>>> = Vec::new();
 
     tokio::spawn(async move {
         mqtt_bridge::mqtt(mqtt_config, tx_publish).await;
@@ -175,19 +177,23 @@ async fn main() {
         // iterate through widgets
         widgets_config.as_sequence().unwrap().iter().for_each(|m| {
             let widget_type = m["widget"].as_str().unwrap();
-            let mut widget = match widget_type {
+            match widget_type {
                 "Status" => {
-                    let mut widget = Status::config(m.clone());
-                    widget
+                    let mut widget = Status::new() ;
+                    widget.config(m.clone());
+                    widgets.push(Rc::new(RefCell::new(widget)));
+                }
+                "SubText" => {
+                    let mut widget = SubText::new();
+                    widget.config(m.clone());
+                    widgets.push(Rc::new(RefCell::new(widget)));
                 }
                 _ => {
-                    info!("unknown widget type {}", widget_type);
-                    Status::config(m.clone())
+                    info!("Unknown widget type {}", widget_type);
                 }
             };
-            widgets.push(widget);
         });
-        let mut status_frame = Status::new(5 * 32, 5 * 32, 3 * 32, 32,"Test1");
+        let mut status_frame = Status::new();
         let mut button = Button::new(32, 32, 3 * 32, 32, "Button");
         button.handle({
             move |w, ev| match ev {
@@ -372,22 +378,25 @@ async fn main() {
 
     win.end();
     win.show();
+    let widgets_rc = Rc::new(RefCell::new(widgets));
+    let widgets_rc1 = widgets_rc.clone();
     let sub = rx_publish.resubscribe();
-    app::add_timeout3(1.0,|_x| {
-        info!("add_timeout3");
-        widgets.iter().for_each(|w| {
+    app::add_timeout3(1.0,move |_x| {
+        debug!("add_timeout3");
+        widgets_rc1.borrow().iter().for_each(|w| {
             w.borrow_mut().on(PubSubEvent::Timer1sec);
         });
         app::repeat_timeout3(1.0, _x);       
     } );
     while _app.wait() {
         let mut received = false;
+        let widgets_rc2 = widgets_rc.clone();
         while let Ok(x) = rx_publish.try_recv() {
             match x {
                 PubSubEvent::Publish { topic, message } => {
-                    entry_list.add(topic, message);
+                    entry_list.add(topic.clone(), message.clone());
                     received = true;
-                    widgets.iter().for_each(|w| {
+                    widgets_rc2.borrow().iter().for_each(|w| {
                         w.borrow_mut().on(PubSubEvent::Publish {
                             topic: topic.clone(),
                             message: message.clone(),
@@ -396,7 +405,7 @@ async fn main() {
                 }
                 PubSubEvent::Timer1sec  => {
                     info!("Timer1sec");
-                    widgets.iter().for_each(|w| {
+                    widgets_rc2.borrow().iter().for_each(|w| {
                         w.borrow_mut().on(PubSubEvent::Timer1sec);
                     });
                 }
