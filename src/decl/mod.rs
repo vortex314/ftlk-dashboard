@@ -11,6 +11,59 @@ use std::{
         Arc,
     },
 };
+use crate::widget::gauge::Gauge;
+use crate::widget::status::Status;
+use crate::widget::PubSubWidget;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeclWidget {
+    pub widget: String,
+    pub label: Option<String>,
+    pub id: Option<String>,
+    pub fixed: Option<i32>,
+    pub color: Option<String>,
+    pub labelcolor: Option<String>,
+    pub children: Option<Vec<DeclWidget>>,
+    pub hide: Option<bool>,
+    pub deactivate: Option<bool>,
+    pub visible: Option<bool>,
+    pub resizable: Option<bool>,
+    pub selectioncolor: Option<String>,
+    pub tooltip: Option<String>,
+    pub image: Option<String>,
+    pub deimage: Option<String>,
+    pub labelfont: Option<u32>,
+    pub labelsize: Option<i32>,
+    pub align: Option<i32>,
+    pub when: Option<i32>,
+    pub frame: Option<String>,
+    pub downframe: Option<String>,
+    pub shortcut: Option<String>,
+    pub pad: Option<i32>,
+    pub minimum: Option<f64>,
+    pub maximum: Option<f64>,
+    pub step: Option<f64>,
+    pub slidersize: Option<f64>,
+    pub textfont: Option<i32>,
+    pub textsize: Option<i32>,
+    pub textcolor: Option<String>,
+    pub x: Option<i32>,
+    pub y: Option<i32>,
+    pub w: Option<i32>,
+    pub h: Option<i32>,
+    pub margin: Option<i32>,
+    pub left: Option<i32>,
+    pub top: Option<i32>,
+    pub right: Option<i32>,
+    pub bottom: Option<i32>,
+    pub pos: Option<Vec<i32>>,
+    pub size: Option<Vec<i32>>,
+    pub src_topic: Option<String>,
+    pub dst_topic: Option<String>,
+    pub src_range: Option<Vec<f64>>,
+    pub dst_range: Option<Vec<f64>>,
+    pub src_timeout: Option<u128>,
+}
 
 pub const FRAMES: &[&str] = &[
     "NoBox",
@@ -95,7 +148,7 @@ macro_rules! handle_text {
     };
 }
 
-pub(crate) fn handle_w<T>(w: &Widget, widget: &mut T)
+pub(crate) fn handle_w<T>(w: &DeclWidget, widget: &mut T)
 where
     T: Clone + Send + Sync + WidgetExt + 'static,
 {
@@ -252,17 +305,14 @@ where
     }
 }
 
-mod widget;
-use widget::*;
 
-pub(crate) fn transform(w: &Widget) {
+
+pub(crate) fn transform(w: &DeclWidget) {
     match w.widget.as_str() {
         "Gauge" => {
-            let mut g = widget::gauge::Gauge::new(w.clone());
+            let mut g = Gauge::config(w.clone());
         }
-        "Status" => {
-            let mut g = widget::status::Status::new(w.clone());
-        }
+
         "Column" => {
             let mut c = group::Flex::default_fill().column();
             handle_w(w, &mut c);
@@ -529,55 +579,7 @@ pub(crate) fn transform(w: &Widget) {
     };
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Widget {
-    widget: String,
-    label: Option<String>,
-    id: Option<String>,
-    fixed: Option<i32>,
-    color: Option<String>,
-    labelcolor: Option<String>,
-    children: Option<Vec<Widget>>,
-    hide: Option<bool>,
-    deactivate: Option<bool>,
-    visible: Option<bool>,
-    resizable: Option<bool>,
-    selectioncolor: Option<String>,
-    tooltip: Option<String>,
-    image: Option<String>,
-    deimage: Option<String>,
-    labelfont: Option<u32>,
-    labelsize: Option<i32>,
-    align: Option<i32>,
-    when: Option<i32>,
-    frame: Option<String>,
-    downframe: Option<String>,
-    shortcut: Option<String>,
-    pad: Option<i32>,
-    minimum: Option<f64>,
-    maximum: Option<f64>,
-    step: Option<f64>,
-    slidersize: Option<f64>,
-    textfont: Option<i32>,
-    textsize: Option<i32>,
-    textcolor: Option<String>,
-    x: Option<i32>,
-    y: Option<i32>,
-    w: Option<i32>,
-    h: Option<i32>,
-    margin: Option<i32>,
-    left: Option<i32>,
-    top: Option<i32>,
-    right: Option<i32>,
-    bottom: Option<i32>,
-    pos: Option<Vec<i32>>,
-    size: Option<Vec<i32>>,
-    src_topic: Option<String>,
-    dst_topic: Option<String>,
-    src_range: Option<Vec<f64>>,
-    dst_range: Option<Vec<f64>>,
-    src_timeout: Option<u128>,
-}
+
 
 /// Entry point for your declarative app
 #[derive(Debug, Clone)]
@@ -588,8 +590,8 @@ pub struct DeclarativeApp {
     label: String,
     #[allow(dead_code)]
     path: Option<&'static str>,
-    widget: Option<Widget>,
-    load_fn: fn(&'static str) -> Option<Widget>,
+    widget: Option<DeclWidget>,
+    load_fn: fn(&'static str) -> Option<DeclWidget>,
 }
 
 impl DeclarativeApp {
@@ -599,7 +601,7 @@ impl DeclarativeApp {
         h: i32,
         label: &str,
         path: &'static str,
-        load_fn: fn(&'static str) -> Option<Widget>,
+        load_fn: fn(&'static str) -> Option<DeclWidget>,
     ) -> Self {
         let widget = load_fn(path);
         let a = app::App::default().with_scheme(app::Scheme::Gtk);
@@ -616,7 +618,7 @@ impl DeclarativeApp {
 
     #[cfg(feature = "json")]
     pub fn new_json(w: i32, h: i32, label: &str, path: &'static str) -> Self {
-        fn load_fn(path: &'static str) -> Option<Widget> {
+        fn load_fn(path: &'static str) -> Option<DeclWidget> {
             let s = std::fs::read_to_string(path).ok()?;
             serde_json::from_str(&s).map_err(|e| eprintln!("{e}")).ok()
         }
@@ -625,7 +627,7 @@ impl DeclarativeApp {
 
     #[cfg(feature = "json5")]
     pub fn new_json5(w: i32, h: i32, label: &str, path: &'static str) -> Self {
-        fn load_fn(path: &'static str) -> Option<Widget> {
+        fn load_fn(path: &'static str) -> Option<DeclWidget> {
             let s = std::fs::read_to_string(path).ok()?;
             serde_json5::from_str(&s).map_err(|e| eprintln!("{e}")).ok()
         }
@@ -634,7 +636,7 @@ impl DeclarativeApp {
 
     #[cfg(feature = "xml")]
     pub fn new_xml(w: i32, h: i32, label: &str, path: &'static str) -> Self {
-        fn load_fn(path: &'static str) -> Option<Widget> {
+        fn load_fn(path: &'static str) -> Option<DeclWidget> {
             let s = std::fs::read_to_string(path).ok()?;
             serde_xml_rs::from_str(&s)
                 .map_err(|e| eprintln!("{e}"))
@@ -645,7 +647,7 @@ impl DeclarativeApp {
 
     #[cfg(feature = "yaml")]
     pub fn new_yaml(w: i32, h: i32, label: &str, path: &'static str) -> Self {
-        fn load_fn(path: &'static str) -> Option<Widget> {
+        fn load_fn(path: &'static str) -> Option<DeclWidget> {
             let s = std::fs::read_to_string(path).ok()?;
             serde_yaml::from_str(&s).map_err(|e| eprintln!("{e}")).ok()
         }
@@ -653,7 +655,7 @@ impl DeclarativeApp {
     }
 
     /// Instantiate a new declarative app
-    pub fn new_inline(w: i32, h: i32, label: &str, widget: Option<Widget>) -> Self {
+    pub fn new_inline(w: i32, h: i32, label: &str, widget: Option<DeclWidget>) -> Self {
         let a = app::App::default().with_scheme(app::Scheme::Gtk);
         Self {
             a,

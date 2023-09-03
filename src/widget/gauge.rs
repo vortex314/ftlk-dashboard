@@ -2,10 +2,12 @@ use fltk::{enums::*, prelude::*, *};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::decl::Widget;
-use crate::decl::PubSubWidget;
+use crate::decl::DeclWidget;
+use crate::widget::PubSubWidget;
 use crate::pubsub::PubSubEvent;
 use tokio::sync::mpsc;
+
+use fltk::widget::Widget;
 
 #[derive(Debug, Clone)]
 pub struct Gauge {
@@ -17,7 +19,7 @@ pub struct Gauge {
 }
 
 impl PubSubWidget for Gauge {
-    fn new(props: Widget) -> Self {
+    fn config(props: DeclWidget) -> Self {
         info!("Gauge::new()");
         let size = props.size.unwrap_or(vec![10, 10]);
         let pos = props.pos.unwrap_or(vec![0, 0]);
@@ -100,7 +102,7 @@ impl Gauge {
         self.main_wid.redraw();
     }
 
-    pub fn configure(&mut self, widget: &Widget) {
+    pub fn configure(&mut self, widget: &DeclWidget) {
         widget
             .label
             .as_ref()

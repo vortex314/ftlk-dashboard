@@ -3,6 +3,7 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
+use fltk::valuator::Dial;
 use regex::Regex;
 
 #[macro_use]
@@ -20,11 +21,11 @@ use fltk::enums::Event;
 use fltk::frame::Frame;
 use fltk::group::{Group, HGrid, Tabs};
 use fltk::misc::Progress;
+use fltk::widget::Widget;
 use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
-use fltk::widget::Widget;
 //==================================================================================================
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -32,8 +33,10 @@ use std::env;
 use std::fmt::Error;
 use std::fs::File;
 use std::io::prelude::*;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep, Thread};
+use std::rc::Rc;
 //==================================================================================================
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -47,19 +50,32 @@ mod decl;
 mod logger;
 mod pubsub;
 mod store;
+mod widget;
 use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
+use widget::status::Status;
+use widget::PubSubWidget;
 
 const PATH: &str = "src/config.yaml";
 
+use decl::DeclWidget;
 use decl::DeclarativeApp;
-use decl::Widget as WidgetDecl;
 
-fn load_fn(path: &'static str) -> Option<WidgetDecl> {
+fn load_fn(path: &'static str) -> Option<DeclWidget> {
     let s = std::fs::read_to_string(path).ok()?;
     // We want to see the serde error on the command line while we're developing
     serde_yaml::from_str(&s).map_err(|e| eprintln!("{e}")).ok()
+}
+
+fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y: i32) -> bool {
+    let x1 = w.x();
+    let y1 = w.y();
+    if x1 % inc_x != new_x % inc_x || y1 % inc_y != new_y % inc_y {
+        w.set_pos((new_x / inc_x) * inc_x, (new_y / inc_y) * inc_y);
+        return true;
+    }
+    false
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
@@ -94,7 +110,9 @@ async fn main() {
 
     let redis_config = config["redis"].clone();
     let mqtt_config = config["mqtt"].clone();
+    let widgets_config = config["widgets"].clone();
     let bc = tx_publish.clone();
+    let widgets = Vec::new();
 
     tokio::spawn(async move {
         mqtt_bridge::mqtt(mqtt_config, tx_publish).await;
@@ -115,9 +133,9 @@ async fn main() {
 
     let mut entry_list = EntryList::new();
 
-    let tab = Tabs::new(0, 0, window_width, window_height, "");
+    let mut tab = Tabs::new(0, 0, window_width, window_height, "");
 
-    let grp = group::Group::new(20, 20, window_width - 20, window_height - 20, "Table");
+    let grp_table = group::Group::new(20, 20, window_width - 20, window_height - 20, "Table");
     let mut table = SmartTable::default()
         .with_size(window_width - 20, window_height - 20)
         .center_of_parent()
@@ -147,27 +165,94 @@ async fn main() {
     table.set_row_header_width(100);
 
     table.end();
-    grp.end();
+    grp_table.end();
+
+    let mut grp_dashboard =
+        group::Group::new(20, 20, window_width - 40, window_height - 40, "Dashboard");
+    //       grid.debug(true);
 
     {
-        let grp1 = group::Group::new(20, 20, window_width - 40, window_height - 40, "Dashboard");
-        //       grid.debug(true);
-
+        // iterate through widgets
+        widgets_config.as_sequence().unwrap().iter().for_each(|m| {
+            let widget_type = m["widget"].as_str().unwrap();
+            let mut widget = match widget_type {
+                "Status" => {
+                    let mut widget = Status::config(m.clone());
+                    widget
+                }
+                _ => {
+                    info!("unknown widget type {}", widget_type);
+                    Status::config(m.clone())
+                }
+            };
+            widgets.push(widget);
+        });
+        let mut status_frame = Status::new(5 * 32, 5 * 32, 3 * 32, 32,"Test1");
         let mut button = Button::new(32, 32, 3 * 32, 32, "Button");
         button.handle({
             move |w, ev| match ev {
-                enums::Event::Drag => {
-                    info!("Drag {} {}", app::event_x(), app::event_y());
-                    w.set_pos(app::event_x(), app::event_y());
-                    w.redraw();
-                    w.parent().unwrap().redraw();
-                    w.parent().unwrap().parent().unwrap().redraw();
+                enums::Event::Push => {
+                    if app::event_button() == 3 {
+                        let mut win =
+                            window::Window::new(app::event_x(), app::event_y(), 400, 300, "Dialog");
+                        let mut input = input::Input::new(100, 100, 160, 25, "Input");
+                        input.set_value("Hello World!");
+                        let mut button = Button::new(100, 150, 160, 25, "Ok");
+                        button.set_callback(|w| {
+                            w.parent().unwrap().hide();
+                        });
+                        win.end();
+                        win.show();
+                    }
                     true
                 }
+                enums::Event::Drag => {
+                    info!(
+                        "Drag {} {} {} ",
+                        app::event_x(),
+                        app::event_y(),
+                        app::event_button()
+                    );
+                    if grid_pos_change(
+                        &mut (w.as_base_widget()),
+                        app::event_x(),
+                        app::event_y(),
+                        32,
+                        32,
+                    ) {
+                        w.parent().unwrap().parent().unwrap().redraw();
+                    }
+                    true
+                }
+                /*enums::Event::Move => {
+                    info!(
+                        "Move {} {} {} ",
+                        app::event_x(),
+                        app::event_y(),
+                        app::event_button()
+                    );
+                    let dist_right_border = (w.x() + w.w() - app::event_x()).abs();
+                    let dist_bottom_border = (w.y() + w.h() - app::event_y()).abs();
+                    let is_on_right_bottom_corner = (dist_right_border < 10 && dist_bottom_border < 10);
+                    info!(
+                        "dist_right_border {} dist_bottom_border {} is_on_right_bottom_corner {}",
+                        dist_right_border, dist_bottom_border, is_on_right_bottom_corner
+                    );
+                    let mut win = w.window().unwrap();
+                    if is_on_right_bottom_corner {
+                        info!("is_on_right_bottom_corner");
+                        win.set_cursor(enums::Cursor::SE);
+                        w.set_size(app::event_x() - w.x(), app::event_y() - w.y());
+                    } else {
+                        win.set_cursor(enums::Cursor::Default);
+                    }
+                    true
+                }*/
                 _ => false,
             }
         });
-
+    }
+    {
         let mut progress_bar = Progress::new(32, 2 * 32, 3 * 32, 32, "");
         progress_bar.set_maximum(100.);
         progress_bar.set_value(50.);
@@ -175,63 +260,98 @@ async fn main() {
         progress_bar.set_label("15 V");
         progress_bar.handle({
             move |w, ev| match ev {
+                Event::Push => true,
                 enums::Event::Drag => {
                     info!("key {:?}", app::event_original_key());
-                    info!("Drag {} {}", app::event_x(), app::event_y());
-                    w.set_pos(app::event_x(), app::event_y());
-                    w.redraw();
-                    w.parent().unwrap().redraw();
-                    w.parent().unwrap().parent().unwrap().redraw();
+                    info!(
+                        "Drag {} {} {} ",
+                        app::event_x(),
+                        app::event_y(),
+                        app::event_button()
+                    );
+                    if grid_pos_change(
+                        &mut (w.as_base_widget()),
+                        app::event_x(),
+                        app::event_y(),
+                        32,
+                        32,
+                    ) {
+                        w.parent().unwrap().parent().unwrap().redraw();
+                    }
+
                     true
                 }
                 _ => false,
             }
         });
-
-        let mut slider = valuator::Slider::new(32, 3 * 32, 4 * 32, 32, "");
-        slider.set_type(valuator::SliderType::HorizontalNice);
-        slider.set_bounds(0., 1000.);
-        slider.set_value(500.);
-        slider.handle({
-            move |w, ev| match ev {
-                enums::Event::Drag => {
-                    info!("Drag {} {}", app::event_x(), app::event_y());
-                    w.set_pos(app::event_x(), app::event_y());
-                    w.redraw();
-                    w.parent().unwrap().redraw();
-                    w.parent().unwrap().parent().unwrap().redraw();
-                    true
-                }
-                _ => false,
-            }
-        });
-
-        let mut widget = Widget::new(32, 4 * 32, 3 * 32, 32, "Widget");
-        widget.set_color(Color::Red);
-        widget.set_label_color(Color::White);
-        widget.draw(|w| {
-            draw::draw_box(w.frame(), w.x(), w.y(), w.w(), w.h(), Color::Red);
-            draw::set_draw_color(enums::Color::Black); // for the text
-            draw::set_font(enums::Font::Helvetica, app::font_size());
-            draw::draw_text2(&w.label(), w.x(), w.y(), w.w(), w.h(), w.align());
-        });
-        widget.handle({
-            move |w, ev| match ev {
-                enums::Event::Drag => {
-                    info!("Drag {} {}", app::event_x(), app::event_y());
-                    w.set_pos(app::event_x(), app::event_y());
-                    w.redraw();
-                    w.parent().unwrap().redraw();
-                    w.parent().unwrap().parent().unwrap().redraw();
-                    true
-                }
-                _ => false,
-            }
-        });
-
-        //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
-        grp1.end();
     }
+    let mut slider = valuator::Slider::new(32, 3 * 32, 4 * 32, 32, "");
+    slider.set_type(valuator::SliderType::HorizontalNice);
+    slider.set_bounds(0., 1000.);
+    slider.set_value(500.);
+    slider.handle({
+        move |w, ev| match ev {
+            enums::Event::Drag => {
+                info!(
+                    "Drag {} {} {} ",
+                    app::event_x(),
+                    app::event_y(),
+                    app::event_button()
+                );
+                if grid_pos_change(
+                    &mut (w.as_base_widget()),
+                    app::event_x(),
+                    app::event_y(),
+                    32,
+                    32,
+                ) {
+                    w.parent().unwrap().parent().unwrap().redraw();
+                }
+                true
+            }
+            _ => false,
+        }
+    });
+
+    let mut widget = Widget::new(32, 4 * 32, 3 * 32, 32, "Widget");
+    widget.set_color(Color::Red);
+    widget.set_label_color(Color::White);
+    widget.draw(|w| {
+        draw::draw_box(w.frame(), w.x(), w.y(), w.w(), w.h(), Color::Red);
+        draw::set_draw_color(enums::Color::Red); // for the text
+        draw::set_font(enums::Font::Helvetica, app::font_size());
+        draw::draw_text2(&w.label(), w.x(), w.y(), w.w(), w.h(), w.align());
+    });
+
+    widget.handle({
+        move |w, ev| match ev {
+            Event::Push => true,
+            enums::Event::Drag => {
+                info!(
+                    "Drag {} {} {} ",
+                    app::event_x(),
+                    app::event_y(),
+                    app::event_button()
+                );
+                if grid_pos_change(
+                    &mut (w.as_base_widget()),
+                    app::event_x(),
+                    app::event_y(),
+                    32,
+                    32,
+                ) {
+                    w.parent().unwrap().parent().unwrap().redraw();
+                }
+                true
+            }
+            _ => false,
+        }
+    });
+    widget.show();
+
+    //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
+    grp_dashboard.end();
+    tab.set_value(&(grp_dashboard.as_group().unwrap()));
 
     {
         let grp2 = group::Group::new(20, 20, window_width - 40, window_height - 40, "Test");
@@ -253,6 +373,13 @@ async fn main() {
     win.end();
     win.show();
     let sub = rx_publish.resubscribe();
+    app::add_timeout3(1.0,|_x| {
+        info!("add_timeout3");
+        widgets.iter().for_each(|w| {
+            w.borrow_mut().on(PubSubEvent::Timer1sec);
+        });
+        app::repeat_timeout3(1.0, _x);       
+    } );
     while _app.wait() {
         let mut received = false;
         while let Ok(x) = rx_publish.try_recv() {
@@ -260,6 +387,18 @@ async fn main() {
                 PubSubEvent::Publish { topic, message } => {
                     entry_list.add(topic, message);
                     received = true;
+                    widgets.iter().for_each(|w| {
+                        w.borrow_mut().on(PubSubEvent::Publish {
+                            topic: topic.clone(),
+                            message: message.clone(),
+                        });
+                    });
+                }
+                PubSubEvent::Timer1sec  => {
+                    info!("Timer1sec");
+                    widgets.iter().for_each(|w| {
+                        w.borrow_mut().on(PubSubEvent::Timer1sec);
+                    });
                 }
             }
         }
@@ -283,6 +422,8 @@ async fn main() {
                 }
             }
             table.redraw();
+            info!("Received {} messages", entry_count);
+            awake();
         }
     }
 }
@@ -312,6 +453,10 @@ async fn receiver(mut rx: broadcast::Receiver<PubSubEvent>, pattern: &str) {
                         pattern, topic, message
                     );
                 }
+            }
+            Ok(Ok(PubSubEvent::Timer1sec)) => {
+                _time_last = std::time::Instant::now();
+                info!("Timer1sec");
             }
             Ok(Err(e)) => {
                 error!(" error: {}", e);

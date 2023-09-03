@@ -6,6 +6,7 @@ use serde_yaml::Value;
 #[derive(Debug, Clone)]
 pub enum PubSubEvent {
     Publish{ topic: String, message: String},
+    Timer1sec,
 }
 #[derive(Debug, Clone)]
 pub enum PubSubCmd {
