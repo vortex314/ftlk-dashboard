@@ -56,6 +56,7 @@ use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::status::Status;
 use widget::sub_text::SubText;
+use widget::sub_gauge::SubGauge;
 use widget::PubSubWidget;
 
 const PATH: &str = "src/config.yaml";
@@ -188,12 +189,16 @@ async fn main() {
                     widget.config(m.clone());
                     widgets.push(Rc::new(RefCell::new(widget)));
                 }
+                "SubGauge" => {
+                    let mut widget = SubGauge::new();
+                    widget.config(m.clone());
+                    widgets.push(Rc::new(RefCell::new(widget)));
+                }
                 _ => {
-                    info!("Unknown widget type {}", widget_type);
+                    warn!("Unknown widget type {}", widget_type);
                 }
             };
         });
-        let mut status_frame = Status::new();
         let mut button = Button::new(32, 32, 3 * 32, 32, "Button");
         button.handle({
             move |w, ev| match ev {

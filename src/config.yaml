@@ -33,6 +33,14 @@ widgets:
     src_prefix: "latency = "
     src_suffix: " ms"
     src_timeout:  3000
+  - widget: SubGauge
+    pos: [14,2]
+    size: [6,6]
+    src_topic: "dst/ESP32-44592/sys/loopback"
+    src_prefix: "latency = "
+    src_suffix: " ms"
+    src_timeout:  3000
+    src_range: [0,1000]
 
 
   

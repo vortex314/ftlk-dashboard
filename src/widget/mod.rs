@@ -13,11 +13,7 @@ use serde_yaml::Value;
 pub mod status;
 pub mod gauge;
 pub mod sub_text;
-
-struct PubSubParams {
-    src_topic: String,
-    src_timeout: u128,
-}
+pub mod sub_gauge;
 
 pub trait PubSubWidget {
     fn on(&mut self,event : PubSubEvent );
