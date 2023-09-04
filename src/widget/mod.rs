@@ -21,6 +21,22 @@ pub trait PubSubWidget {
     fn config(&mut self, props:Value) ;
 }
 
+pub struct Context {
+    grid_width : i32,
+    grid_height : i32,
+    theme: String,
+    pub publish_channel : mpsc::Sender<PubSubEvent>,
+}
+
+pub fn context() -> Context {
+    Context {
+        grid_width : 32,
+        grid_height : 32,
+        theme: "gtk".to_string(),
+        publish_channel : mpsc::channel(100).0,
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub struct GridRectangle {

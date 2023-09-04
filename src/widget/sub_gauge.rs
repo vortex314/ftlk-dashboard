@@ -8,7 +8,6 @@ use std::rc::Rc;
 use std::time::Instant;
 use std::time::SystemTime;
 
-use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
 use crate::widget::dnd_callback;
 use crate::widget::GridRectangle;
@@ -35,9 +34,12 @@ impl SubGauge {
         let mut grp = group::Group::default()
             .with_align(Align::Top);
         let mut frame =
-            frame::Frame::default().with_label("0").with_align(Align::Top);
+            frame::Frame::default().with_label("50%").with_align(Align::Bottom );
         frame.set_label_size(26);
         grp.end();
+        grp.handle(move |w, ev| {
+            dnd_callback(&mut w.as_base_widget(), ev)
+        });
         let mut sub_gauge = SubGauge {
             grp,
             frame,
@@ -53,15 +55,15 @@ impl SubGauge {
         let value_c = sub_gauge.value.clone();
         sub_gauge.grp.draw(move |w| {
             draw::set_draw_rgb_color(230, 230, 230);
-            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), 0., 180.);
+            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
             draw::set_draw_hex_color(0xb0bf1a);
             draw::draw_pie(
                 w.x(),
                 w.y(),
                 w.w(),
                 w.h(),
-                (100. - *value_c.borrow()) as f64 * 1.8,
-                180.,
+                (100. - *value_c.borrow()) as f64 * 2.7 - 45.,
+                225.,
             );
             draw::set_draw_color(Color::White);
             draw::draw_pie(

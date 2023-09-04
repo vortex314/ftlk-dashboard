@@ -26,6 +26,8 @@ use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
+use fltk_theme::{ColorTheme,WidgetScheme,ThemeType,WidgetTheme,widget_themes, color_themes};
+
 //==================================================================================================
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -58,6 +60,7 @@ use widget::status::Status;
 use widget::sub_text::SubText;
 use widget::sub_gauge::SubGauge;
 use widget::PubSubWidget;
+use widget::dnd_callback;
 
 const PATH: &str = "src/config.yaml";
 
@@ -133,6 +136,8 @@ async fn main() {
         .with_size(window_width, window_height)
         .with_label("FLTK dashboard");
     win.make_resizable(true);
+    let widget_theme = WidgetTheme::new(ThemeType::AquaClassic);
+    widget_theme.apply();
 
     let mut entry_list = EntryList::new();
 
@@ -205,7 +210,7 @@ async fn main() {
                 enums::Event::Push => {
                     if app::event_button() == 3 {
                         let mut win =
-                            window::Window::new(app::event_x(), app::event_y(), 400, 300, "Dialog");
+                            window::Window::new(app::event_x(), app::event_y(), 400, 300, "FLTK Dahboard");
                         let mut input = input::Input::new(100, 100, 160, 25, "Input");
                         input.set_value("Hello World!");
                         let mut button = Button::new(100, 150, 160, 25, "Ok");
@@ -218,47 +223,10 @@ async fn main() {
                     true
                 }
                 enums::Event::Drag => {
-                    info!(
-                        "Drag {} {} {} ",
-                        app::event_x(),
-                        app::event_y(),
-                        app::event_button()
-                    );
-                    if grid_pos_change(
-                        &mut (w.as_base_widget()),
-                        app::event_x(),
-                        app::event_y(),
-                        32,
-                        32,
-                    ) {
-                        w.parent().unwrap().parent().unwrap().redraw();
-                    }
+                    dnd_callback(& mut w.as_base_widget(), ev);
                     true
                 }
-                /*enums::Event::Move => {
-                    info!(
-                        "Move {} {} {} ",
-                        app::event_x(),
-                        app::event_y(),
-                        app::event_button()
-                    );
-                    let dist_right_border = (w.x() + w.w() - app::event_x()).abs();
-                    let dist_bottom_border = (w.y() + w.h() - app::event_y()).abs();
-                    let is_on_right_bottom_corner = (dist_right_border < 10 && dist_bottom_border < 10);
-                    info!(
-                        "dist_right_border {} dist_bottom_border {} is_on_right_bottom_corner {}",
-                        dist_right_border, dist_bottom_border, is_on_right_bottom_corner
-                    );
-                    let mut win = w.window().unwrap();
-                    if is_on_right_bottom_corner {
-                        info!("is_on_right_bottom_corner");
-                        win.set_cursor(enums::Cursor::SE);
-                        w.set_size(app::event_x() - w.x(), app::event_y() - w.y());
-                    } else {
-                        win.set_cursor(enums::Cursor::Default);
-                    }
-                    true
-                }*/
+                
                 _ => false,
             }
         });
@@ -267,62 +235,17 @@ async fn main() {
         let mut progress_bar = Progress::new(32, 2 * 32, 3 * 32, 32, "");
         progress_bar.set_maximum(100.);
         progress_bar.set_value(50.);
+        progress_bar.set_color(Color::Red);
         progress_bar.set_selection_color(Color::from_rgb(0, 255, 0));
         progress_bar.set_label("15 V");
-        progress_bar.handle({
-            move |w, ev| match ev {
-                Event::Push => true,
-                enums::Event::Drag => {
-                    info!("key {:?}", app::event_original_key());
-                    info!(
-                        "Drag {} {} {} ",
-                        app::event_x(),
-                        app::event_y(),
-                        app::event_button()
-                    );
-                    if grid_pos_change(
-                        &mut (w.as_base_widget()),
-                        app::event_x(),
-                        app::event_y(),
-                        32,
-                        32,
-                    ) {
-                        w.parent().unwrap().parent().unwrap().redraw();
-                    }
+        progress_bar.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
 
-                    true
-                }
-                _ => false,
-            }
-        });
     }
     let mut slider = valuator::Slider::new(32, 3 * 32, 4 * 32, 32, "");
     slider.set_type(valuator::SliderType::HorizontalNice);
     slider.set_bounds(0., 1000.);
     slider.set_value(500.);
-    slider.handle({
-        move |w, ev| match ev {
-            enums::Event::Drag => {
-                info!(
-                    "Drag {} {} {} ",
-                    app::event_x(),
-                    app::event_y(),
-                    app::event_button()
-                );
-                if grid_pos_change(
-                    &mut (w.as_base_widget()),
-                    app::event_x(),
-                    app::event_y(),
-                    32,
-                    32,
-                ) {
-                    w.parent().unwrap().parent().unwrap().redraw();
-                }
-                true
-            }
-            _ => false,
-        }
-    });
+    slider.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
 
     let mut widget = Widget::new(32, 4 * 32, 3 * 32, 32, "Widget");
     widget.set_color(Color::Red);
@@ -334,30 +257,7 @@ async fn main() {
         draw::draw_text2(&w.label(), w.x(), w.y(), w.w(), w.h(), w.align());
     });
 
-    widget.handle({
-        move |w, ev| match ev {
-            Event::Push => true,
-            enums::Event::Drag => {
-                info!(
-                    "Drag {} {} {} ",
-                    app::event_x(),
-                    app::event_y(),
-                    app::event_button()
-                );
-                if grid_pos_change(
-                    &mut (w.as_base_widget()),
-                    app::event_x(),
-                    app::event_y(),
-                    32,
-                    32,
-                ) {
-                    w.parent().unwrap().parent().unwrap().redraw();
-                }
-                true
-            }
-            _ => false,
-        }
-    });
+    widget.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
     widget.show();
 
     //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
