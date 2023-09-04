@@ -10,7 +10,7 @@ use serde_yaml::Value;
 
 use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
-use crate::widget::dnd_callback;
+use crate::widget::{dnd_callback, get_params};
 use crate::widget::GridRectangle;
 use crate::widget::PubSubWidget;
 use tokio::sync::mpsc;
@@ -80,16 +80,17 @@ impl Status {
 
 impl PubSubWidget for Status {
      fn config(&mut self,props: Value)  {
-        info!("Status::config()");
-        let w = props["size"][0].as_i64().unwrap() * 32;
-        let h = props["size"][1].as_i64().unwrap() * 32;
-        let x = props["pos"][0].as_i64().unwrap() * 32;
-        let y = props["pos"][1].as_i64().unwrap() * 32;
-        self.src_topic = props["src_topic"].as_str().unwrap().to_string();
-        props["src_timeout"].as_i64().map(|i| self.src_timeout = i as u128);
-        self.status_frame.resize(x as i32,y as i32,w as i32,h as i32);
-        props["label"].as_str().map(|s| self.status_frame.set_label(s));
-        info!("Status size : {},{} pos : {},{} ", x,y,w,h);
+        if let Some(pr)  = get_params(props.clone()) {
+            info!("Status::config() {:?}",pr);
+            if let Some(size) = pr.size {   
+                if let Some(pos) = pr.pos {
+                self.status_frame.resize(pos.0*32,pos.1*32,size.0*32,size.1*32);
+                }
+            }
+            pr.src_topic.map(|s| self.src_topic = s);
+            pr.src_timeout.map(|i| self.src_timeout = i as u128);
+            pr.label.map(|s| self.status_frame.set_label(s.as_str()));
+        }
     }
 
     fn on(&mut self, event: PubSubEvent) {

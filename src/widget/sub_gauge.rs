@@ -9,7 +9,7 @@ use std::time::Instant;
 use std::time::SystemTime;
 
 use crate::pubsub::PubSubEvent;
-use crate::widget::dnd_callback;
+use crate::widget::{dnd_callback,get_params};
 use crate::widget::GridRectangle;
 use crate::widget::PubSubWidget;
 use tokio::sync::mpsc;
@@ -53,7 +53,8 @@ impl SubGauge {
             grid_rectangle: GridRectangle::new(1, 1, 1, 1),
         };
         let value_c = sub_gauge.value.clone();
-        sub_gauge.grp.draw(move |w| {
+        sub_gauge.frame.draw(move |w| {
+            let value = *value_c.borrow();
             draw::set_draw_rgb_color(230, 230, 230);
             draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
             draw::set_draw_hex_color(0xb0bf1a);
@@ -62,10 +63,10 @@ impl SubGauge {
                 w.y(),
                 w.w(),
                 w.h(),
-                (100. - *value_c.borrow()) as f64 * 2.7 - 45.,
+                (100. - value) as f64 * 2.7 - 45.,
                 225.,
             );
-            draw::set_draw_color(Color::White);
+            draw::set_draw_color(Color::from_hex(0x2a2a2a));
             draw::draw_pie(
                 w.x() - 50 + w.w() / 2,
                 w.y() - 50 + w.h() / 2,
@@ -83,18 +84,21 @@ impl SubGauge {
 impl PubSubWidget for SubGauge {
     fn config(&mut self, props: Value) {
         info!("SubGauge::config()");
-        let w = props["size"][0].as_i64().unwrap() * 32;
-        let h = props["size"][1].as_i64().unwrap() * 32;
-        let x = props["pos"][0].as_i64().unwrap() * 32;
-        let y = props["pos"][1].as_i64().unwrap() * 32;
-        self.src_topic = props["src_topic"].as_str().unwrap_or("").to_string();
-        self.src_prefix = props["src_prefix"].as_str().unwrap_or("").to_string();
-        self.src_suffix = props["src_suffix"].as_str().unwrap_or("").to_string();
-        self.src_timeout = props["src_timeout"].as_i64().unwrap_or(1000) as u128;
-        self.grp.resize(x as i32, y as i32, w as i32, h as i32);
-        self.frame.resize(x as i32, y as i32, w as i32, h as i32);
-        props["label"].as_str().map(|s| self.frame.set_label(s));
-        info!("Status size : {},{} pos : {},{} ", x, y, w, h);
+        if let Some(pr)  = get_params(props.clone()) {
+            info!("Status::config() {:?}",pr);
+            if let Some(size) = pr.size {   
+                if let Some(pos) = pr.pos {
+                self.grp.resize(pos.0*32,pos.1*32,size.0*32,size.1*32);
+                self.frame.resize(pos.0*32,pos.1*32,size.0*32,size.1*32);
+                }
+            }
+            pr.src_topic.map(|s| self.src_topic = s);
+            pr.src_prefix.map(|s| self.src_prefix = s);
+            pr.src_suffix.map(|s| self.src_suffix = s);
+            pr.src_timeout.map(|i| self.src_timeout = i as u128);
+            pr.label.map(|s| self.frame.set_label(s.as_str()));
+            pr.src_range.map(| f| self.src_range = f);
+        }
     }
     fn on(&mut self, event: PubSubEvent) {
         match event {
@@ -103,18 +107,18 @@ impl PubSubWidget for SubGauge {
                     return;
                 }
                 info!(
-                    "Status::on() topic: {} vs src_topic : {}",
+                    "SubGauge::on() topic: {} vs src_topic : {}",
                     topic, self.src_topic
                 );
                 let _ = message.parse::<f64>().map(|f| {
-                    *self.value.borrow_mut() = f;
-                    self.grp.redraw();
+                    info!("SubGauge::on() f : {}", f);
+                    *self.value.borrow_mut() = (f /1000.) % 100.;
                 });
                 self.last_update = std::time::SystemTime::now();
                 let text = format!("{}{}{}", self.src_prefix, message, self.src_suffix);
                 self.frame.set_label(&text);
                 self.frame.set_color(Color::from_hex(0x00ff00));
-                self.frame.parent().unwrap().redraw();
+                self.frame.redraw();
             }
             PubSubEvent::Timer1sec => {
                 let delta = std::time::SystemTime::now()
@@ -124,7 +128,7 @@ impl PubSubWidget for SubGauge {
                 if delta > self.src_timeout {
                     info!("Status::on() {} Expired", self.src_topic);
                     self.frame.set_color(Color::from_hex(0xff0000));
-                    self.frame.parent().unwrap().redraw();
+                    self.frame.redraw();
                 }
             }
         }

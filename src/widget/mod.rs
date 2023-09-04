@@ -1,4 +1,5 @@
 use crate::pubsub::PubSubEvent;
+use serde_derive::Deserialize;
 use tokio::sync::mpsc;
 use fltk::widget::Widget;
 use fltk::button::Button;
@@ -15,6 +16,7 @@ pub mod gauge;
 pub mod sub_text;
 pub mod sub_gauge;
 
+#[derive(Debug, Clone,Deserialize)]
 pub struct WidgetParams {
     widget:String,
     label:Option<String>,
@@ -40,9 +42,13 @@ pub struct WidgetParams {
     dst_format:Option<String>,
 }
 // get WidgetParams from yaml value
-
-pub fn get_params(x:Value)->WidgetParams {
-    
+use serde_yaml::Error;
+pub fn get_params(x:Value)->Option<WidgetParams> {
+    let x:Result<WidgetParams,Error> = serde_yaml::from_value(x);
+    if x.is_ok() {
+        return Some(x.unwrap());
+    }
+    None
 }
 
 pub trait PubSubWidget {
@@ -72,7 +78,7 @@ pub fn context() -> Context {
         grid_height : 32,
         screen_width : 1024,
         screen_height : 768,
-        background_color : enums::Color::Grey,
+        background_color : enums::Color::from_hex(0x2a2a2a),
         font_color : enums::Color::Black,
         valuator_color : enums::Color::Blue,
         theme: "gtk".to_string(),
