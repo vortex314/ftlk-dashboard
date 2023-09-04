@@ -30,17 +30,20 @@ widgets:
     pos: [14,1]
     size: [6,1]
     src_topic: "dst/ESP32-44592/sys/loopback"
-    src_prefix: "latency = "
+    src_prefix: "up  = "
     src_suffix: " ms"
     src_timeout:  3000
+    src_eval: "hms(input)"
   - widget: SubGauge
     pos: [14,2]
     size: [6,6]
+    label: "Latency"
     src_topic: "dst/ESP32-44592/sys/loopback"
-    src_prefix: "latency = "
-    src_suffix: " ms"
+    src_prefix: ""
+    src_suffix: " sec"
     src_timeout:  3000
-    src_range: [0,1000]
+    src_range: [0.,1000.]
+    src_eval: "input / 1000."
 
 
   

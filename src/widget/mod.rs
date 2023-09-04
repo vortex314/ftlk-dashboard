@@ -15,23 +15,66 @@ pub mod gauge;
 pub mod sub_text;
 pub mod sub_gauge;
 
+pub struct WidgetParams {
+    widget:String,
+    label:Option<String>,
+
+    pos:Option<(i32,i32)>,
+    size:Option<(i32,i32)>,
+    image:Option<String>,
+
+    src_topic:Option<String>,
+    src_topics:Option<Vec<String>>,
+    src_prefix:Option<String>,
+    src_suffix:Option<String>,
+    src_eval:Option<String>,
+    src_timeout:Option<u64>,
+    src_range:Option<(f64,f64)>,
+    src_ranges:Option<Vec<(f64,f64)>>,
+    src_timespan:Option<u64>,
+    src_samples:Option<u64>,
+
+    dst_topic:Option<String>,
+    dst_on:Option<String>,
+    dst_off:Option<String>,
+    dst_format:Option<String>,
+}
+// get WidgetParams from yaml value
+
+pub fn get_params(x:Value)->WidgetParams {
+    
+}
+
 pub trait PubSubWidget {
     fn on(&mut self,event : PubSubEvent );
     fn set_publish_channel(&mut self,channel : mpsc::Sender<PubSubEvent>);
     fn config(&mut self, props:Value) ;
 }
 
+#[derive(Debug, Clone)]
 pub struct Context {
     grid_width : i32,
     grid_height : i32,
+    screen_width : i32,
+    screen_height : i32,
+    background_color : enums::Color,
+    font_color : enums::Color,
+    valuator_color : enums::Color,
+
     theme: String,
     pub publish_channel : mpsc::Sender<PubSubEvent>,
 }
 
 pub fn context() -> Context {
-    Context {
+    Context 
+    {
         grid_width : 32,
         grid_height : 32,
+        screen_width : 1024,
+        screen_height : 768,
+        background_color : enums::Color::Grey,
+        font_color : enums::Color::Black,
+        valuator_color : enums::Color::Blue,
         theme: "gtk".to_string(),
         publish_channel : mpsc::channel(100).0,
     }

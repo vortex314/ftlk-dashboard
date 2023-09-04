@@ -26,7 +26,7 @@ use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
-use fltk_theme::{ColorTheme,WidgetScheme,ThemeType,WidgetTheme,widget_themes, color_themes};
+use fltk_theme::{ColorTheme,WidgetScheme,ThemeType,WidgetTheme,SchemeType,widget_themes, color_themes};
 
 //==================================================================================================
 use std::cell::RefCell;
@@ -130,14 +130,16 @@ async fn main() {
     /*     DeclarativeApp::new(1024, 768, "MyApp", "src/config.yaml", load_fn)
     .run(|_| {})
     .unwrap();*/
-    let mut _app = App::default().with_scheme(AppScheme::Gtk);
+    let mut _app = App::default().with_scheme(AppScheme::Oxy);
     let config = config.clone();
     let mut win = window::Window::default()
         .with_size(window_width, window_height)
         .with_label("FLTK dashboard");
     win.make_resizable(true);
-    let widget_theme = WidgetTheme::new(ThemeType::AquaClassic);
-    widget_theme.apply();
+//    let widget_theme = WidgetTheme::new(ThemeType::AquaClassic);
+//    widget_theme.apply();
+//    let widget_scheme = WidgetScheme::new(SchemeType::Fluent);
+//    widget_scheme.apply();
 
     let mut entry_list = EntryList::new();
 
@@ -235,7 +237,7 @@ async fn main() {
         let mut progress_bar = Progress::new(32, 2 * 32, 3 * 32, 32, "");
         progress_bar.set_maximum(100.);
         progress_bar.set_value(50.);
-        progress_bar.set_color(Color::Red);
+//        progress_bar.set_color(Color::Red);
         progress_bar.set_selection_color(Color::from_rgb(0, 255, 0));
         progress_bar.set_label("15 V");
         progress_bar.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
