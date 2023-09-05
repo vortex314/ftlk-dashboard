@@ -264,7 +264,7 @@ async fn main() {
 
     //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
     grp_dashboard.end();
-    tab.set_value(&(grp_dashboard.as_group().unwrap()));
+    let _ = tab.set_value(&(grp_dashboard.as_group().unwrap()));
 
     {
         let grp2 = group::Group::new(20, 20, window_width - 40, window_height - 40, "Test");

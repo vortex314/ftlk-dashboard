@@ -4,6 +4,7 @@ use fltk::widget::Widget;
 use fltk::{enums::*, prelude::*, *};
 use serde_yaml::Value;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Instant;
 use std::time::SystemTime;
@@ -14,6 +15,10 @@ use crate::widget::GridRectangle;
 use crate::widget::PubSubWidget;
 use tokio::sync::mpsc;
 
+use evalexpr::*;
+use evalexpr::Value as V;
+
+
 #[derive(Debug, Clone)]
 pub struct SubGauge {
     grp: group::Group,
@@ -23,9 +28,19 @@ pub struct SubGauge {
     src_prefix: String,
     src_suffix: String,
     src_range: (f64,f64 ),
+    src_eval: String,
     src_timeout: u128,
     last_update: SystemTime,
     grid_rectangle: GridRectangle,
+    eval_expr : Option<Node>
+}
+
+fn hms(msec: u64) -> String {
+    let hours = msec / 3_600_000;
+    let minutes = (msec % 3_600_000) / 60_000;
+    let seconds = (msec % 60_000) / 1000;
+
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
 impl SubGauge {
@@ -48,9 +63,11 @@ impl SubGauge {
             src_prefix: "".to_string(),
             src_suffix: "".to_string(),
             src_range: (0.,100.),
+            src_eval: "".to_string(),
             last_update: std::time::UNIX_EPOCH,
             src_timeout: 1000,
             grid_rectangle: GridRectangle::new(1, 1, 1, 1),
+            eval_expr : None
         };
         let value_c = sub_gauge.value.clone();
         sub_gauge.frame.draw(move |w| {
@@ -98,6 +115,7 @@ impl PubSubWidget for SubGauge {
             pr.src_timeout.map(|i| self.src_timeout = i as u128);
             pr.label.map(|s| self.frame.set_label(s.as_str()));
             pr.src_range.map(| f| self.src_range = f);
+            pr.src_eval.map(|expr|  build_operator_tree(expr.as_str()).map(|x| self.eval_expr = Some(x) )); // Do proper error handling here
         }
     }
     fn on(&mut self, event: PubSubEvent) {
@@ -110,6 +128,24 @@ impl PubSubWidget for SubGauge {
                     "SubGauge::on() topic: {} vs src_topic : {}",
                     topic, self.src_topic
                 );
+                self.eval_expr.as_ref().map(|n| {
+                    let mut context =  HashMapContext::new();
+                    context.set_value("msg_str".into(), message.clone().into()).unwrap();
+                    let _ = message.parse::<i64>().map(|i| {
+                        context.set_value("msg_i64".into(), i.into()).unwrap();
+                    });
+                    context.set_function("hms".into(),    Function::new(|argument| {
+                        if let Ok(int) = argument.as_int() {
+                            Ok(V::String(hms(int as u64)))
+                        } else {
+                            Err(EvalexprError::expected_number(argument.clone()))
+                        }
+                    })).unwrap();
+                    n.eval_with_context(&context).map(|x| {
+                        info!("SubGauge::on() eval_expr : {}", x);
+                        *self.value.borrow_mut() = x.as_float().unwrap();
+                    }).unwrap();
+                });
                 let _ = message.parse::<f64>().map(|f| {
                     info!("SubGauge::on() f : {}", f);
                     *self.value.borrow_mut() = (f /1000.) % 100.;

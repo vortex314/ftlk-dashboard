@@ -2,10 +2,10 @@ screen:
   resolution: [1024,768]
   grid: [32,24]
 mqtt:
-  host: "pcthink.local"
+  host: "limero.ddns.net"
   port: 1883
 redis:
-  host: "pcthink.local"
+  host: "limero.ddns.net"
   port: 6379
 widgets:
   - widget: Status
@@ -30,10 +30,10 @@ widgets:
     pos: [14,1]
     size: [6,1]
     src_topic: "dst/ESP32-44592/sys/loopback"
-    src_prefix: "up  = "
-    src_suffix: " ms"
+    src_prefix: "uptime  = "
+    src_suffix: ""
     src_timeout:  3000
-    src_eval: "hms(input)"
+    src_eval: "hms(msg_i64)"
   - widget: SubGauge
     pos: [14,2]
     size: [6,6]
@@ -43,7 +43,7 @@ widgets:
     src_suffix: " sec"
     src_timeout:  3000
     src_range: [0.,1000.]
-    src_eval: "input / 1000."
+    src_eval: "msg_i64 / 1000."
 
 
   

@@ -20,5 +20,6 @@ env_logger = "0.10.0"
 redis = { git = "https://github.com/redis-rs/redis-rs", branch = "resp3",features = ["tokio-comp"] }
 chrono = "0.4.19" # for time
 mqtt-async-client = "0.3.1" # for mqtt
-notify = "5.1"
+notify = "6.1.1"
 serde_derive = "1"
+evalexpr="*"
