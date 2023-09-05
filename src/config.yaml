@@ -2,25 +2,25 @@ screen:
   resolution: [1024,768]
   grid: [32,24]
 mqtt:
-  host: "limero.ddns.net"
+  host: "pcthink.local"
   port: 1883
 redis:
-  host: "limero.ddns.net"
+  host: "pcthink.local"
   port: 6379
 widgets:
-  - widget: Status
+  - widget: SubStatus
     label: "USB-serial"
     pos: [6,1]
     size: [4,2]
     src_topic: "src/USB0/system/alive"
     src_timeout:  3000
-  - widget: Status
+  - widget: SubStatus
     label: "ESP32-Motor"
     pos: [10,1]
     size: [4,2]
     src_topic: "dst/ESP32-44592/sys/loopback"
     src_timeout:  3000
-  - widget: Status
+  - widget: SubStatus
     label: "Dead"
     pos: [14,1]
     size: [4,1]

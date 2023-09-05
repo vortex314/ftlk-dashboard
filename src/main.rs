@@ -56,7 +56,7 @@ mod widget;
 use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
-use widget::status::Status;
+use widget::sub_status::SubStatus;
 use widget::sub_text::SubText;
 use widget::sub_gauge::SubGauge;
 use widget::PubSubWidget;
@@ -186,8 +186,8 @@ async fn main() {
         widgets_config.as_sequence().unwrap().iter().for_each(|m| {
             let widget_type = m["widget"].as_str().unwrap();
             match widget_type {
-                "Status" => {
-                    let mut widget = Status::new() ;
+                "SubStatus" => {
+                    let mut widget = SubStatus::new() ;
                     widget.config(m.clone());
                     widgets.push(Rc::new(RefCell::new(widget)));
                 }
@@ -338,7 +338,6 @@ async fn main() {
                 }
             }
             table.redraw();
-            info!("Received {} messages", entry_count);
             awake();
         }
     }

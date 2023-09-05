@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use serde_yaml::Value;
 
-pub mod status;
+pub mod sub_status;
 pub mod gauge;
 pub mod sub_text;
 pub mod sub_gauge;
@@ -49,6 +49,14 @@ pub fn get_params(x:Value)->Option<WidgetParams> {
         return Some(x.unwrap());
     }
     None
+}
+
+pub fn hms(msec: u64) -> String {
+    let hours = msec / 3_600_000;
+    let minutes = (msec % 3_600_000) / 60_000;
+    let seconds = (msec % 60_000) / 1000;
+
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
 pub trait PubSubWidget {
@@ -139,7 +147,7 @@ pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
             true // Important! to make Drag work
         }
         enums::Event::Drag => {
-            info!(
+            debug!(
                 "Drag {} {} {} ",
                 app::event_x(),
                 app::event_y(),

@@ -60,7 +60,7 @@ pub async fn redis(config: Value, tx_broadcast: broadcast::Sender<PubSubEvent>) 
         );*/
 
         while let Some(msg) = pubsub_stream.next().await {
-            debug!(
+            info!(
                 "Redis topic: {}",
                 msg.get_channel_name().to_string(),
             );

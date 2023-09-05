@@ -14,7 +14,7 @@ pub fn init_logger() {
             let name = thread_name.name().unwrap_or("unknown");
             writeln!(
                 buf,
-                "[{}] {:10.10} | {:10.10}:{:3}| {} {}",
+                "[{}] {:10.10} | {:20.20}:{:3}| {} {}",
                 chrono::Local::now().format("%H:%M:%S.%3f"),
                 name,
                 record.file().unwrap_or("unknown"),

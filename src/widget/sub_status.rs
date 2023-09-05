@@ -16,7 +16,7 @@ use crate::widget::{dnd_callback, get_params};
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone)]
-pub struct Status {
+pub struct SubStatus {
     status_frame: frame::Frame,
     src_topic: String,
     last_update: SystemTime,
@@ -25,14 +25,14 @@ pub struct Status {
     alive: bool,
 }
 
-impl Status {
-    pub fn new() -> Status {
+impl SubStatus {
+    pub fn new() -> SubStatus {
         info!("Status::new()");
         let mut status_frame = frame::Frame::default().with_label("Status");
         status_frame.set_frame(FrameType::BorderBox);
         status_frame.set_color(Color::from_u32(0xff0000));
         status_frame.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
-        Status {
+        SubStatus {
             status_frame,
             src_topic: "".to_string(),
             last_update: std::time::UNIX_EPOCH,
@@ -78,10 +78,10 @@ impl Status {
     }*/
 }
 
-impl PubSubWidget for Status {
+impl PubSubWidget for SubStatus {
     fn config(&mut self, props: Value) {
         if let Some(pr) = get_params(props.clone()) {
-            info!("Status::config() {:?}", pr);
+            debug!("Status::config() {:?}", pr);
             if let Some(size) = pr.size {
                 if let Some(pos) = pr.pos {
                     self.status_frame
@@ -102,7 +102,7 @@ impl PubSubWidget for Status {
                 }
                 self.last_update = std::time::SystemTime::now();
                 if !self.alive {
-                    info!("Status::on() {} Alive", self.src_topic);
+                    debug!("Status::on() {} Alive", self.src_topic);
                     self.alive = true;
                     self.status_frame.set_color(Color::from_hex(0x00ff00));
                     self.status_frame.parent().unwrap().redraw();
@@ -115,7 +115,7 @@ impl PubSubWidget for Status {
                     .as_millis();
                 if delta > self.src_timeout {
                     if self.alive {
-                        info!("Status::on() {} Expired", self.src_topic);
+                        debug!("Status::on() {} Expired", self.src_topic);
                         self.alive = false;
                         self.status_frame.set_color(Color::from_hex(0xff0000));
                         self.status_frame.parent().unwrap().redraw();

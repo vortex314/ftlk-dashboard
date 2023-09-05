@@ -12,7 +12,7 @@ use std::{
     },
 };
 use crate::widget::gauge::Gauge;
-use crate::widget::status::Status;
+use crate::widget::sub_status::SubStatus;
 use crate::widget::PubSubWidget;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
