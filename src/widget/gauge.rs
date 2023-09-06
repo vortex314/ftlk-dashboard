@@ -66,6 +66,50 @@ impl PubSubWidget for Gauge {
             self.frame.redraw();
         });*/
     }
+    fn get_config(&self ) -> Value {
+        let mut props = serde_yaml::Mapping::new();
+        props.insert(
+            serde_yaml::Value::String("type".to_string()),
+            serde_yaml::Value::String("status".to_string()),
+        );
+        props.insert(
+            serde_yaml::Value::String("src_topic".to_string()),
+            serde_yaml::Value::String(self.src_topic.clone()),
+        );
+
+        let mut pos = serde_yaml::Mapping::new();
+        pos.insert(
+            serde_yaml::Value::String("x".to_string()),
+            serde_yaml::Value::Number(serde_yaml::Number::from(self.frame.x())),
+        );
+        pos.insert(
+            serde_yaml::Value::String("y".to_string()),
+            serde_yaml::Value::Number(serde_yaml::Number::from(self.frame.y())),
+        );
+        let mut size = serde_yaml::Mapping::new();
+        size.insert(
+            serde_yaml::Value::String("w".to_string()),
+            serde_yaml::Value::Number(serde_yaml::Number::from(self.frame.width())),
+        );
+        size.insert(
+            serde_yaml::Value::String("h".to_string()),
+            serde_yaml::Value::Number(serde_yaml::Number::from(self.frame.height())),
+        );
+        let mut pr = serde_yaml::Mapping::new();
+        pr.insert(
+            serde_yaml::Value::String("pos".to_string()),
+            serde_yaml::Value::Mapping(pos),
+        );
+        pr.insert(
+            serde_yaml::Value::String("size".to_string()),
+            serde_yaml::Value::Mapping(size),
+        );
+        props.insert(
+            serde_yaml::Value::String("params".to_string()),
+            serde_yaml::Value::Mapping(pr),
+        );
+        serde_yaml::Value::Mapping(props)
+    }
     fn on(&mut self, event: PubSubEvent) {
         match event {
             PubSubEvent::Publish { topic, message } => {

@@ -63,6 +63,7 @@ pub trait PubSubWidget {
     fn on(&mut self,event : PubSubEvent );
     fn set_publish_channel(&mut self,channel : mpsc::Sender<PubSubEvent>);
     fn config(&mut self, props:Value) ;
+    fn get_config(&self ) -> Value;
 }
 
 #[derive(Debug, Clone)]

@@ -119,6 +119,7 @@ async fn main() {
     let bc = tx_publish.clone();
    
     let mut widgets:Vec<Rc<RefCell<dyn PubSubWidget>>> = Vec::new();
+    let wrc =  Rc::new(RefCell::new(widgets));
 
     tokio::spawn(async move {
         mqtt_bridge::mqtt(mqtt_config, tx_publish).await;
@@ -136,10 +137,7 @@ async fn main() {
         .with_size(window_width, window_height)
         .with_label("FLTK dashboard");
     win.make_resizable(true);
-//    let widget_theme = WidgetTheme::new(ThemeType::AquaClassic);
-//    widget_theme.apply();
-//    let widget_scheme = WidgetScheme::new(SchemeType::Fluent);
-//    widget_scheme.apply();
+
 
     let mut entry_list = EntryList::new();
 
@@ -178,126 +176,70 @@ async fn main() {
     grp_table.end();
 
     let mut grp_dashboard =
-        group::Group::new(20, 20, window_width - 40, window_height - 40, "Dashboard");
-    //       grid.debug(true);
+        group::Group::new(20, 20, window_width - 20, window_height - 20, "Dashboard");
 
     {
-        // iterate through widgets
-        widgets_config.as_sequence().unwrap().iter().for_each(|m| {
+        let mut button = Button::new(20, 20, 32, 32, "@filesave");
+        let wrc2 = wrc.clone();
+        button.handle( move|b, ev| {
+            if ev == Event::Push {
+                info!("Save config");
+                let mut file = File::create("test.yaml").unwrap();
+                let mut s = String::new();
+                for widget in wrc2.borrow().iter() {
+                    let cfg = serde_yaml::to_string(&widget.borrow().get_config()).unwrap();
+                    info!("cfg : {}", cfg);
+                    s.push_str(&cfg);
+                }
+                file.write_all(s.as_bytes()).unwrap();
+                true
+            } else {
+                false
+            }
+        });
+        let wrc1 = wrc.clone();
+        widgets_config.as_sequence().unwrap().iter().for_each(move |m| {
             let widget_type = m["widget"].as_str().unwrap();
             match widget_type {
                 "SubStatus" => {
                     let mut widget = SubStatus::new() ;
                     widget.config(m.clone());
-                    widgets.push(Rc::new(RefCell::new(widget)));
+                    wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                 }
                 "SubText" => {
                     let mut widget = SubText::new();
                     widget.config(m.clone());
-                    widgets.push(Rc::new(RefCell::new(widget)));
+                    wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                 }
                 "SubGauge" => {
                     let mut widget = SubGauge::new();
                     widget.config(m.clone());
-                    widgets.push(Rc::new(RefCell::new(widget)));
+                    wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                 }
                 _ => {
                     warn!("Unknown widget type {}", widget_type);
                 }
             };
         });
-        let mut button = Button::new(32, 32, 3 * 32, 32, "Button");
-        button.handle({
-            move |w, ev| match ev {
-                enums::Event::Push => {
-                    if app::event_button() == 3 {
-                        let mut win =
-                            window::Window::new(app::event_x(), app::event_y(), 400, 300, "FLTK Dahboard");
-                        let mut input = input::Input::new(100, 100, 160, 25, "Input");
-                        input.set_value("Hello World!");
-                        let mut button = Button::new(100, 150, 160, 25, "Ok");
-                        button.set_callback(|w| {
-                            w.parent().unwrap().hide();
-                        });
-                        win.end();
-                        win.show();
-                    }
-                    true
-                }
-                enums::Event::Drag => {
-                    dnd_callback(& mut w.as_base_widget(), ev);
-                    true
-                }
-                
-                _ => false,
-            }
-        });
+        
     }
-    {
-        let mut progress_bar = Progress::new(32, 2 * 32, 3 * 32, 32, "");
-        progress_bar.set_maximum(100.);
-        progress_bar.set_value(50.);
-//        progress_bar.set_color(Color::Red);
-        progress_bar.set_selection_color(Color::from_rgb(0, 255, 0));
-        progress_bar.set_label("15 V");
-        progress_bar.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
-
-    }
-    let mut slider = valuator::Slider::new(32, 3 * 32, 4 * 32, 32, "");
-    slider.set_type(valuator::SliderType::HorizontalNice);
-    slider.set_bounds(0., 1000.);
-    slider.set_value(500.);
-    slider.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
-
-    let mut widget = Widget::new(32, 4 * 32, 3 * 32, 32, "Widget");
-    widget.set_color(Color::Red);
-    widget.set_label_color(Color::White);
-    widget.draw(|w| {
-        draw::draw_box(w.frame(), w.x(), w.y(), w.w(), w.h(), Color::Red);
-        draw::set_draw_color(enums::Color::Red); // for the text
-        draw::set_font(enums::Font::Helvetica, app::font_size());
-        draw::draw_text2(&w.label(), w.x(), w.y(), w.w(), w.h(), w.align());
-    });
-
-    widget.handle( move |w, ev| { dnd_callback(& mut w.as_base_widget(), ev)});
-    widget.show();
-
     //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
     grp_dashboard.end();
-    let _ = tab.set_value(&(grp_dashboard.as_group().unwrap()));
-
-    {
-        let grp2 = group::Group::new(20, 20, window_width - 40, window_height - 40, "Test");
-        /* let mut hgrid = HGrid::new(20, 20, window_width - 100, window_height - 100, "Test");
-           button::Button::default();
-        button::Button::default();
-        button::Button::default();
-        button::Button::default();
-        button::Button::default();
-        button::Button::default();
-        button::Button::default();
-        button::Button::default();
-        hgrid.end();*/
-        grp2.end();
-    }
-
     tab.end();
-
     win.end();
     win.show();
-    let widgets_rc = Rc::new(RefCell::new(widgets));
-    let widgets_rc1 = widgets_rc.clone();
     let sub = rx_publish.resubscribe();
+    let mut widgets_rc = wrc.clone();
     app::add_timeout3(1.0,move |_x| {
         debug!("add_timeout3");
-        widgets_rc1.borrow().iter().for_each(|w| {
+        widgets_rc.borrow().iter().for_each(|w| {
             w.borrow_mut().on(PubSubEvent::Timer1sec);
         });
         app::repeat_timeout3(1.0, _x);       
     } );
     while _app.wait() {
         let mut received = false;
-        let widgets_rc2 = widgets_rc.clone();
+        let widgets_rc2 = wrc.clone();
         while let Ok(x) = rx_publish.try_recv() {
             match x {
                 PubSubEvent::Publish { topic, message } => {
