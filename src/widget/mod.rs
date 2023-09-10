@@ -1,54 +1,85 @@
 use crate::pubsub::PubSubEvent;
-use serde_derive::Deserialize;
-use tokio::sync::mpsc;
-use fltk::widget::Widget;
 use fltk::button::Button;
 use fltk::enums;
 use fltk::input::Input;
-use fltk::*;
 use fltk::prelude::*;
+use fltk::widget::Widget;
+use fltk::*;
+use serde_derive::Deserialize;
+use serde_derive::Serialize;
+use serde_yaml::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
-use serde_yaml::Value;
+use tokio::sync::mpsc;
 
-pub mod sub_status;
 pub mod gauge;
-pub mod sub_text;
 pub mod sub_gauge;
+pub mod sub_status;
+pub mod sub_text;
 
-#[derive(Debug, Clone,Deserialize)]
+#[derive(Debug,  Clone, Deserialize, Serialize)]
 pub struct WidgetParams {
-    widget:String,
-    label:Option<String>,
+    widget: String,
+    label: Option<String>,
 
-    pos:Option<(i32,i32)>,
-    size:Option<(i32,i32)>,
-    image:Option<String>,
+    pos: Option<(i32, i32)>,
+    size: Option<(i32, i32)>,
+    image: Option<String>,
 
-    src_topic:Option<String>,
-    src_topics:Option<Vec<String>>,
-    src_prefix:Option<String>,
-    src_suffix:Option<String>,
-    src_eval:Option<String>,
-    src_timeout:Option<u64>,
-    src_range:Option<(f64,f64)>,
-    src_ranges:Option<Vec<(f64,f64)>>,
-    src_timespan:Option<u64>,
-    src_samples:Option<u64>,
+    src_topic: Option<String>,
+    src_topics: Option<Vec<String>>,
+    src_prefix: Option<String>,
+    src_suffix: Option<String>,
+    src_eval: Option<String>,
+    src_timeout: Option<u64>,
+    src_range: Option<(f64, f64)>,
+    src_ranges: Option<Vec<(f64, f64)>>,
+    src_timespan: Option<u64>,
+    src_samples: Option<u64>,
 
-    dst_topic:Option<String>,
-    dst_on:Option<String>,
-    dst_off:Option<String>,
-    dst_format:Option<String>,
+    dst_topic: Option<String>,
+    dst_on: Option<String>,
+    dst_off: Option<String>,
+    dst_format: Option<String>,
 }
 // get WidgetParams from yaml value
+
 use serde_yaml::Error;
-pub fn get_params(x:Value)->Option<WidgetParams> {
-    let x:Result<WidgetParams,Error> = serde_yaml::from_value(x);
-    if x.is_ok() {
-        return Some(x.unwrap());
+impl WidgetParams {
+    pub fn new() -> WidgetParams {
+        WidgetParams {
+            widget: "".to_string(),
+            label: None,
+            pos: Some((0, 0)),
+            size: Some((0, 0)),
+            image: None,
+            src_topic: None,
+            src_topics: None,
+            src_prefix: None,
+            src_suffix: None,
+            src_eval: None,
+            src_timeout: None,
+            src_range: None,
+            src_ranges: None,
+            src_timespan: None,
+            src_samples: None,
+            dst_topic: None,
+            dst_on: None,
+            dst_off: None,
+            dst_format: None,
+        }
     }
-    None
+    pub fn from_value(v: Value) -> Option<WidgetParams> {
+        let x: Result<WidgetParams, Error> = serde_yaml::from_value(v);
+        if let Ok(w) = x {
+            return Some(w);
+        }
+        None
+    }
+
+    pub fn save_params(&self) -> Value {
+        serde_yaml::to_value(&self).unwrap()
+    }
 }
 
 pub fn hms(msec: u64) -> String {
@@ -60,41 +91,39 @@ pub fn hms(msec: u64) -> String {
 }
 
 pub trait PubSubWidget {
-    fn on(&mut self,event : PubSubEvent );
-    fn set_publish_channel(&mut self,channel : mpsc::Sender<PubSubEvent>);
-    fn config(&mut self, props:Value) ;
-    fn get_config(&self ) -> Value;
+    fn on(&mut self, event: PubSubEvent);
+    fn set_publish_channel(&mut self, channel: mpsc::Sender<PubSubEvent>);
+    fn set_config(&mut self, props:WidgetParams);
+    fn get_config(&self) -> Option<WidgetParams>;
 }
 
 #[derive(Debug, Clone)]
 pub struct Context {
-    grid_width : i32,
-    grid_height : i32,
-    screen_width : i32,
-    screen_height : i32,
-    background_color : enums::Color,
-    font_color : enums::Color,
-    valuator_color : enums::Color,
+    grid_width: i32,
+    grid_height: i32,
+    screen_width: i32,
+    screen_height: i32,
+    background_color: enums::Color,
+    font_color: enums::Color,
+    valuator_color: enums::Color,
 
     theme: String,
-    pub publish_channel : mpsc::Sender<PubSubEvent>,
+    pub publish_channel: mpsc::Sender<PubSubEvent>,
 }
 
 pub fn context() -> Context {
-    Context 
-    {
-        grid_width : 32,
-        grid_height : 32,
-        screen_width : 1024,
-        screen_height : 768,
-        background_color : enums::Color::from_hex(0x2a2a2a),
-        font_color : enums::Color::Black,
-        valuator_color : enums::Color::Blue,
+    Context {
+        grid_width: 32,
+        grid_height: 32,
+        screen_width: 1024,
+        screen_height: 768,
+        background_color: enums::Color::from_hex(0x2a2a2a),
+        font_color: enums::Color::Black,
+        valuator_color: enums::Color::Blue,
         theme: "gtk".to_string(),
-        publish_channel : mpsc::channel(100).0,
+        publish_channel: mpsc::channel(100).0,
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct GridRectangle {
@@ -129,7 +158,6 @@ pub fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y
     false
 }
 
-
 pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
     match ev {
         enums::Event::Push => {
@@ -154,7 +182,7 @@ pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
                 app::event_y(),
                 app::event_button()
             );
-            if grid_pos_change( w, app::event_x(), app::event_y(), 32, 32) {
+            if grid_pos_change(w, app::event_x(), app::event_y(), 32, 32) {
                 w.parent().unwrap().parent().unwrap().redraw();
             }
             true

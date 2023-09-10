@@ -10,18 +10,18 @@ use std::time::SystemTime;
 
 use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
+use crate::widget::dnd_callback;
 use crate::widget::GridRectangle;
 use crate::widget::PubSubWidget;
-use crate::widget::{dnd_callback, get_params};
 use tokio::sync::mpsc;
+
+use super::WidgetParams;
 
 #[derive(Debug, Clone)]
 pub struct SubStatus {
     status_frame: frame::Frame,
-    src_topic: String,
     last_update: SystemTime,
-    src_timeout: u128,
-    grid_rectangle: GridRectangle,
+    widget_params: WidgetParams,
     alive: bool,
 }
 
@@ -34,11 +34,20 @@ impl SubStatus {
         status_frame.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
         SubStatus {
             status_frame,
-            src_topic: "".to_string(),
             last_update: std::time::UNIX_EPOCH,
-            src_timeout: 1000,
-            grid_rectangle: GridRectangle::new(1, 1, 1, 1),
             alive: false,
+            widget_params: WidgetParams::new(),
+        }
+    }
+
+    fn reconfigure(&mut self) {
+            if let Some(size) = self.widget_params.size {
+                if let Some(pos) = self.widget_params.pos {
+                    self.status_frame
+                        .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
+                }
+            }
+            self.widget_params.label.as_ref().map(|s| self.status_frame.set_label(s.as_str()));
         }
     }
 
@@ -76,89 +85,44 @@ impl SubStatus {
             _ => false,
         }
     }*/
-}
+
 
 impl PubSubWidget for SubStatus {
-    fn config(&mut self, props: Value) {
-        if let Some(pr) = get_params(props.clone()) {
-            debug!("Status::config() {:?}", pr);
-            if let Some(size) = pr.size {
-                if let Some(pos) = pr.pos {
-                    self.status_frame
-                        .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
-                }
-            }
-            pr.src_topic.map(|s| self.src_topic = s);
-            pr.src_timeout.map(|i| self.src_timeout = i as u128);
-            pr.label.map(|s| self.status_frame.set_label(s.as_str()));
-        }
+    fn set_config(&mut self, props: WidgetParams) {
+        debug!("Status::config() {:?}", props);
+        self.widget_params = props;
+        self.reconfigure();
     }
-    fn get_config(&self ) -> Value {
-        let mut props = serde_yaml::Mapping::new();
-        props.insert(
-            serde_yaml::Value::String("type".to_string()),
-            serde_yaml::Value::String("status".to_string()),
-        );
-        props.insert(
-            serde_yaml::Value::String("src_topic".to_string()),
-            serde_yaml::Value::String(self.src_topic.clone()),
-        );
-        let mut pos = serde_yaml::Mapping::new();
-        pos.insert(
-            serde_yaml::Value::String("x".to_string()),
-            serde_yaml::Value::Number(serde_yaml::Number::from(self.status_frame.x())),
-        );
-        pos.insert(
-            serde_yaml::Value::String("y".to_string()),
-            serde_yaml::Value::Number(serde_yaml::Number::from(self.status_frame.y())),
-        );
-        let mut size = serde_yaml::Mapping::new();
-        size.insert(
-            serde_yaml::Value::String("w".to_string()),
-            serde_yaml::Value::Number(serde_yaml::Number::from(self.status_frame.width())),
-        );
-        size.insert(
-            serde_yaml::Value::String("h".to_string()),
-            serde_yaml::Value::Number(serde_yaml::Number::from(self.status_frame.height())),
-        );
-        let mut pr = serde_yaml::Mapping::new();
-        pr.insert(
-            serde_yaml::Value::String("pos".to_string()),
-            serde_yaml::Value::Mapping(pos),
-        );
-        pr.insert(
-            serde_yaml::Value::String("size".to_string()),
-            serde_yaml::Value::Mapping(size),
-        );
-        props.insert(
-            serde_yaml::Value::String("params".to_string()),
-            serde_yaml::Value::Mapping(pr),
-        );
-        serde_yaml::Value::Mapping(props)
+
+    fn get_config(&self) -> Option<WidgetParams> {
+        Some(self.widget_params.clone())
     }
 
     fn on(&mut self, event: PubSubEvent) {
+        let src_topic = self.widget_params.src_topic.clone().unwrap_or("".into());
+        let src_prefix = self.widget_params.src_prefix.clone().unwrap_or("".into());
+        let src_suffix = self.widget_params.src_suffix.clone().unwrap_or("".into());
+
         match event {
             PubSubEvent::Publish { topic, message } => {
-                if topic != self.src_topic {
-                    return;
-                }
+                if topic == src_topic {
                 self.last_update = std::time::SystemTime::now();
                 if !self.alive {
-                    debug!("Status::on() {} Alive", self.src_topic);
+                    debug!("Status::on() {} Alive", src_topic);
                     self.alive = true;
                     self.status_frame.set_color(Color::from_hex(0x00ff00));
                     self.status_frame.parent().unwrap().redraw();
                 }
+            }
             }
             PubSubEvent::Timer1sec => {
                 let delta = std::time::SystemTime::now()
                     .duration_since(self.last_update)
                     .unwrap()
                     .as_millis();
-                if delta > self.src_timeout {
+                if delta > self.widget_params.src_timeout.unwrap() as u128 {
                     if self.alive {
-                        debug!("Status::on() {} Expired", self.src_topic);
+                        debug!("Status::on() {} Expired", src_topic);
                         self.alive = false;
                         self.status_frame.set_color(Color::from_hex(0xff0000));
                         self.status_frame.parent().unwrap().redraw();

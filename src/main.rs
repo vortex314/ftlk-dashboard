@@ -26,7 +26,9 @@ use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
-use fltk_theme::{ColorTheme,WidgetScheme,ThemeType,WidgetTheme,SchemeType,widget_themes, color_themes};
+use fltk_theme::{
+    color_themes, widget_themes, ColorTheme, SchemeType, ThemeType, WidgetScheme, WidgetTheme,
+};
 
 //==================================================================================================
 use std::cell::RefCell;
@@ -36,9 +38,9 @@ use std::fmt::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::ops::Deref;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep, Thread};
-use std::rc::Rc;
 //==================================================================================================
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -56,11 +58,11 @@ mod widget;
 use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
+use widget::dnd_callback;
+use widget::sub_gauge::SubGauge;
 use widget::sub_status::SubStatus;
 use widget::sub_text::SubText;
-use widget::sub_gauge::SubGauge;
-use widget::PubSubWidget;
-use widget::dnd_callback;
+use widget::{PubSubWidget,WidgetParams};
 
 const PATH: &str = "src/config.yaml";
 
@@ -117,9 +119,9 @@ async fn main() {
     let mqtt_config = config["mqtt"].clone();
     let widgets_config = config["widgets"].clone();
     let bc = tx_publish.clone();
-   
-    let mut widgets:Vec<Rc<RefCell<dyn PubSubWidget>>> = Vec::new();
-    let wrc =  Rc::new(RefCell::new(widgets));
+
+    let mut widgets: Vec<Rc<RefCell<dyn PubSubWidget>>> = Vec::new();
+    let wrc = Rc::new(RefCell::new(widgets));
 
     tokio::spawn(async move {
         mqtt_bridge::mqtt(mqtt_config, tx_publish).await;
@@ -137,7 +139,6 @@ async fn main() {
         .with_size(window_width, window_height)
         .with_label("FLTK dashboard");
     win.make_resizable(true);
-
 
     let mut entry_list = EntryList::new();
 
@@ -181,16 +182,23 @@ async fn main() {
     {
         let mut button = Button::new(20, 20, 32, 32, "@filesave");
         let wrc2 = wrc.clone();
-        button.handle( move|b, ev| {
+        button.handle(move |b, ev| {
             if ev == Event::Push {
                 info!("Save config");
                 let mut file = File::create("test.yaml").unwrap();
                 let mut s = String::new();
+                let mut widgets_value = Value::Sequence(Vec::new());
+                let mut map_all = BTreeMap::new();
+
                 for widget in wrc2.borrow().iter() {
-                    let cfg = serde_yaml::to_string(&widget.borrow().get_config()).unwrap();
-                    info!("cfg : {}", cfg);
-                    s.push_str(&cfg);
+                   /*  widgets_value
+                        .as_sequence_mut()
+                        .unwrap()
+                        .push(widget.borrow().get_config());*/
                 }
+                map_all.insert("widgets".to_string(), widgets_value);
+                let cfg = serde_yaml::to_string(&map_all).unwrap().to_string();
+                s.push_str(&cfg);
                 file.write_all(s.as_bytes()).unwrap();
                 true
             } else {
@@ -198,30 +206,34 @@ async fn main() {
             }
         });
         let wrc1 = wrc.clone();
-        widgets_config.as_sequence().unwrap().iter().for_each(move |m| {
-            let widget_type = m["widget"].as_str().unwrap();
-            match widget_type {
-                "SubStatus" => {
-                    let mut widget = SubStatus::new() ;
-                    widget.config(m.clone());
-                    wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                }
-                "SubText" => {
-                    let mut widget = SubText::new();
-                    widget.config(m.clone());
-                    wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                }
-                "SubGauge" => {
-                    let mut widget = SubGauge::new();
-                    widget.config(m.clone());
-                    wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                }
-                _ => {
-                    warn!("Unknown widget type {}", widget_type);
-                }
-            };
-        });
-        
+        widgets_config
+            .as_sequence()
+            .unwrap()
+            .iter()
+            .for_each(move |m| {
+                let widget_type = m["widget"].as_str().unwrap();
+                let wiget_par  = serde_yaml::to_string(&m).unwrap().to_string();
+                match widget_type {
+                    "SubStatus" => {
+                        let mut widget = SubStatus::new();
+                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
+                    }
+                    "SubText" => {
+                        let mut widget = SubText::new();
+                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
+                    }
+                    "SubGauge" => {
+                        let mut widget = SubGauge::new();
+                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
+                    }
+                    _ => {
+                        warn!("Unknown widget type {}", widget_type);
+                    }
+                };
+            });
     }
     //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
     grp_dashboard.end();
@@ -230,13 +242,13 @@ async fn main() {
     win.show();
     let sub = rx_publish.resubscribe();
     let mut widgets_rc = wrc.clone();
-    app::add_timeout3(1.0,move |_x| {
+    app::add_timeout3(1.0, move |_x| {
         debug!("add_timeout3");
         widgets_rc.borrow().iter().for_each(|w| {
             w.borrow_mut().on(PubSubEvent::Timer1sec);
         });
-        app::repeat_timeout3(1.0, _x);       
-    } );
+        app::repeat_timeout3(1.0, _x);
+    });
     while _app.wait() {
         let mut received = false;
         let widgets_rc2 = wrc.clone();
@@ -252,7 +264,7 @@ async fn main() {
                         });
                     });
                 }
-                PubSubEvent::Timer1sec  => {
+                PubSubEvent::Timer1sec => {
                     info!("Timer1sec");
                     widgets_rc2.borrow().iter().for_each(|w| {
                         w.borrow_mut().on(PubSubEvent::Timer1sec);
