@@ -17,29 +17,46 @@ pub mod sub_gauge;
 pub mod sub_status;
 pub mod sub_text;
 
-#[derive(Debug,  Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WidgetParams {
     widget: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     label: Option<String>,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
     pos: Option<(i32, i32)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     size: Option<(i32, i32)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     image: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_topic: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_topics: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_prefix: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_suffix: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_eval: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_timeout: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_range: Option<(f64, f64)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_ranges: Option<Vec<(f64, f64)>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_timespan: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     src_samples: Option<u64>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     dst_topic: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dst_on: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dst_off: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dst_format: Option<String>,
 }
 // get WidgetParams from yaml value
@@ -93,7 +110,7 @@ pub fn hms(msec: u64) -> String {
 pub trait PubSubWidget {
     fn on(&mut self, event: PubSubEvent);
     fn set_publish_channel(&mut self, channel: mpsc::Sender<PubSubEvent>);
-    fn set_config(&mut self, props:WidgetParams);
+    fn set_config(&mut self, props: WidgetParams);
     fn get_config(&self) -> Option<WidgetParams>;
 }
 

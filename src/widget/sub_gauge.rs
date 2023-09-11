@@ -168,7 +168,7 @@ impl PubSubWidget for SubGauge {
                     .unwrap()
                     .as_millis();
                 if delta > self.widget_params.src_timeout.unwrap() as u128 {
-                    info!("Status::on() {} Expired", src_topic);
+                    debug!("Status::on() {} Expired", src_topic);
                     self.frame.set_color(Color::from_hex(0xff0000));
                     self.frame.redraw();
                 }

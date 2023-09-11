@@ -191,10 +191,12 @@ async fn main() {
                 let mut map_all = BTreeMap::new();
 
                 for widget in wrc2.borrow().iter() {
-                   /*  widgets_value
+                    let param = widget.borrow().get_config().unwrap();
+                    let param_value = serde_yaml::to_value(param).unwrap();
+                   widgets_value
                         .as_sequence_mut()
                         .unwrap()
-                        .push(widget.borrow().get_config());*/
+                        .push(param_value);
                 }
                 map_all.insert("widgets".to_string(), widgets_value);
                 let cfg = serde_yaml::to_string(&map_all).unwrap().to_string();
