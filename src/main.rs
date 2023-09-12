@@ -58,13 +58,14 @@ mod widget;
 use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
-use widget::dnd_callback;
+use widget::*;
 use widget::sub_gauge::SubGauge;
 use widget::sub_status::SubStatus;
 use widget::sub_text::SubText;
 use widget::{PubSubWidget,WidgetParams};
 
 const PATH: &str = "src/config.yaml";
+
 
 use decl::DeclWidget;
 use decl::DeclarativeApp;
@@ -102,6 +103,8 @@ async fn main() {
         .iter()
         .map(|x| x.as_i64().unwrap_or(400))
         .collect();
+    CONTEXT.blocking_write().screen_width = pixels[0] as i32;
+    info!("ctx_screen_width : {} ",ctx_screen_width());
     let window_width = pixels[0] as i32;
     let window_height = pixels[1] as i32;
     info!("Screen resolution {} x {}", window_width, window_height);

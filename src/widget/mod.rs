@@ -8,9 +8,12 @@ use fltk::*;
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
 use serde_yaml::Value;
+use tokio::sync::RwLock;
 use std::cell::RefCell;
 use std::rc::Rc;
 use tokio::sync::mpsc;
+
+use lazy_static::lazy_static;
 
 pub mod gauge;
 pub mod sub_gauge;
@@ -58,6 +61,7 @@ pub struct WidgetParams {
     dst_off: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dst_format: Option<String>,
+
 }
 // get WidgetParams from yaml value
 
@@ -116,31 +120,48 @@ pub trait PubSubWidget {
 
 #[derive(Debug, Clone)]
 pub struct Context {
-    grid_width: i32,
-    grid_height: i32,
-    screen_width: i32,
-    screen_height: i32,
-    background_color: enums::Color,
-    font_color: enums::Color,
-    valuator_color: enums::Color,
+    pub grid_width: i32,
+    pub grid_height: i32,
+    pub screen_width: i32,
+    pub screen_height: i32,
+    pub background_color: enums::Color,
+    pub font_color: enums::Color,
+    pub valuator_color: enums::Color,
 
-    theme: String,
+    pub theme: String,
     pub publish_channel: mpsc::Sender<PubSubEvent>,
 }
 
-pub fn context() -> Context {
-    Context {
-        grid_width: 32,
-        grid_height: 32,
-        screen_width: 1024,
-        screen_height: 768,
-        background_color: enums::Color::from_hex(0x2a2a2a),
-        font_color: enums::Color::Black,
-        valuator_color: enums::Color::Blue,
-        theme: "gtk".to_string(),
-        publish_channel: mpsc::channel(100).0,
+impl Context {
+    pub fn new() -> Context {
+        Context {
+            grid_width: 32,
+            grid_height: 32,
+            screen_width: 1024,
+            screen_height: 768,
+            background_color: enums::Color::from_hex(0x2a2a2a),
+            font_color: enums::Color::Black,
+            valuator_color: enums::Color::Blue,
+            theme: "gtk".to_string(),
+            publish_channel: mpsc::channel(100).0,
+        }
     }
+    
 }
+lazy_static! {
+    pub static ref CONTEXT : RwLock<Context> = RwLock::new(Context::new());
+}
+
+pub fn ctx_screen_height() -> i32 { CONTEXT.try_read().unwrap().screen_height }
+pub fn ctx_screen_width() -> i32 { CONTEXT.try_read().unwrap().screen_width }
+pub fn ctx_grid_width() -> i32 { CONTEXT.try_read().unwrap().grid_width }
+pub fn ctx_grid_height() -> i32 { CONTEXT.try_read().unwrap().grid_height }
+pub fn ctx_background_color() -> enums::Color { CONTEXT.try_read().unwrap().background_color }
+pub fn ctx_font_color() -> enums::Color { CONTEXT.try_read().unwrap().font_color }
+pub fn ctx_valuator_color() -> enums::Color { CONTEXT.try_read().unwrap().valuator_color }
+pub fn ctx_theme() -> String { CONTEXT.try_read().unwrap().theme.clone() }
+
+
 
 #[derive(Debug, Clone)]
 pub struct GridRectangle {

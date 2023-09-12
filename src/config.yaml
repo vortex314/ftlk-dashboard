@@ -8,6 +8,12 @@ redis:
   host: "pcthink.local"
   port: 6379
 widgets:
+  - widget: PubSubRedis
+    label: "Redis"
+    pos: [8,8]
+    size: [2,2]
+    host: "pcthink.local"
+    port: 6379
   - widget: SubStatus
     label: "USB-serial"
     pos: [6,1]
