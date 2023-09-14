@@ -11,6 +11,7 @@ use std::time::SystemTime;
 use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
 use crate::widget::dnd_callback;
+use crate::widget::Context;
 use crate::widget::GridRectangle;
 use crate::widget::PubSubWidget;
 use tokio::sync::mpsc;
@@ -23,6 +24,7 @@ pub struct SubStatus {
     last_update: SystemTime,
     widget_params: WidgetParams,
     alive: bool,
+    ctx: Context,
 }
 
 impl SubStatus {
@@ -37,61 +39,72 @@ impl SubStatus {
             last_update: std::time::UNIX_EPOCH,
             alive: false,
             widget_params: WidgetParams::new(),
+            ctx: Context::new(),
         }
     }
 
     fn reconfigure(&mut self) {
-            if let Some(size) = self.widget_params.size {
-                if let Some(pos) = self.widget_params.pos {
-                    self.status_frame
-                        .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
-                }
+        if let Some(size) = self.widget_params.size {
+            if let Some(pos) = self.widget_params.pos {
+                self.status_frame.resize(
+                    pos.0 * self.ctx.grid_width,
+                    pos.1 * self.ctx.grid_height,
+                    size.0 * self.ctx.grid_width,
+                    size.1 * self.ctx.grid_height,
+                );
             }
-            self.widget_params.label.as_ref().map(|s| self.status_frame.set_label(s.as_str()));
         }
+        self.widget_params
+            .label
+            .as_ref()
+            .map(|s| self.status_frame.set_label(s.as_str()));
     }
+}
 
-    /*
+/*
 
-    fn config_dialog(&mut self, w: &mut Widget, ev: Event) -> bool {
-        match ev {
-            enums::Event::Push => {
-                if app::event_button() == 3 {
-                    let mut win = window::Window::new(
-                        app::event_x_root(),
-                        app::event_y_root(),
-                        400,
-                        300,
-                        "Dialog",
-                    );
-                    let mut main = group::Flex::default_fill().column();
+fn config_dialog(&mut self, w: &mut Widget, ev: Event) -> bool {
+    match ev {
+        enums::Event::Push => {
+            if app::event_button() == 3 {
+                let mut win = window::Window::new(
+                    app::event_x_root(),
+                    app::event_y_root(),
+                    400,
+                    300,
+                    "Dialog",
+                );
+                let mut main = group::Flex::default_fill().column();
 
-                    let mut urow = group::Flex::default().row();
-                    {
-                        urow.set_pad(20);
-                        frame::Frame::default()
-                            .with_label("Source topic:")
-                            .with_align(enums::Align::Inside | enums::Align::Right);
-                        let username = input::Input::default();
-                        urow.fixed(&username, 180);
-                        urow.end();
-                    }
-                    main.fixed(&urow, 30);
-                    win.end();
-                    win.show();
+                let mut urow = group::Flex::default().row();
+                {
+                    urow.set_pad(20);
+                    frame::Frame::default()
+                        .with_label("Source topic:")
+                        .with_align(enums::Align::Inside | enums::Align::Right);
+                    let username = input::Input::default();
+                    urow.fixed(&username, 180);
+                    urow.end();
                 }
-                true // Important! to make Drag work
+                main.fixed(&urow, 30);
+                win.end();
+                win.show();
             }
-            _ => false,
+            true // Important! to make Drag work
         }
-    }*/
-
+        _ => false,
+    }
+}*/
 
 impl PubSubWidget for SubStatus {
     fn set_config(&mut self, props: WidgetParams) {
         debug!("Status::config() {:?}", props);
         self.widget_params = props;
         self.reconfigure();
+    }
+
+    fn set_context(&mut self, context: Context) {
+        self.ctx = context;
     }
 
     fn get_config(&self) -> Option<WidgetParams> {
@@ -106,14 +119,14 @@ impl PubSubWidget for SubStatus {
         match event {
             PubSubEvent::Publish { topic, message } => {
                 if topic == src_topic {
-                self.last_update = std::time::SystemTime::now();
-                if !self.alive {
-                    debug!("Status::on() {} Alive", src_topic);
-                    self.alive = true;
-                    self.status_frame.set_color(Color::from_hex(0x00ff00));
-                    self.status_frame.parent().unwrap().redraw();
+                    self.last_update = std::time::SystemTime::now();
+                    if !self.alive {
+                        debug!("Status::on() {} Alive", src_topic);
+                        self.alive = true;
+                        self.status_frame.set_color(Color::from_hex(0x00ff00));
+                        self.status_frame.parent().unwrap().redraw();
+                    }
                 }
-            }
             }
             PubSubEvent::Timer1sec => {
                 let delta = std::time::SystemTime::now()

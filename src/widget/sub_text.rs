@@ -13,7 +13,7 @@ use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
 use crate::widget::dnd_callback;
 use crate::widget::hms;
-use crate::widget::{GridRectangle, PubSubWidget, WidgetParams};
+use crate::widget::{Context, GridRectangle, PubSubWidget, WidgetParams};
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
@@ -25,6 +25,7 @@ pub struct SubText {
     last_update: SystemTime,
     eval_expr: Option<Node>,
     widget_params: WidgetParams,
+    ctx: Context,
 }
 
 impl SubText {
@@ -39,6 +40,7 @@ impl SubText {
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
             widget_params: WidgetParams::new(),
+            ctx: Context::new(),
         }
     }
 
@@ -46,8 +48,12 @@ impl SubText {
         info!("SubText::config() {:?}", self.widget_params);
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
-                self.frame
-                    .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
+                self.frame.resize(
+                    pos.0 * self.ctx.grid_width,
+                    pos.1 * self.ctx.grid_height,
+                    size.0 * self.ctx.grid_width,
+                    size.1 * self.ctx.grid_height,
+                );
             }
         }
         self.widget_params
@@ -67,6 +73,10 @@ impl PubSubWidget for SubText {
         debug!("Status::config() {:?}", props);
         self.widget_params = props;
         self.reconfigure();
+    }
+
+    fn set_context(&mut self, context: Context) {
+        self.ctx = context;
     }
 
     fn get_config(&self) -> Option<WidgetParams> {

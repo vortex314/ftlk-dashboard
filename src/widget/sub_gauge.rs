@@ -13,7 +13,7 @@ use std::time::SystemTime;
 use crate::pubsub::PubSubEvent;
 use crate::widget::GridRectangle;
 use crate::widget::{dnd_callback, hms};
-use crate::widget::{PubSubWidget, WidgetParams};
+use crate::widget::{Context, PubSubWidget, WidgetParams};
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
@@ -27,6 +27,7 @@ pub struct SubGauge {
     last_update: SystemTime,
     eval_expr: Option<Node>,
     widget_params: WidgetParams,
+    ctx: Context,
 }
 
 impl SubGauge {
@@ -45,6 +46,7 @@ impl SubGauge {
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
             widget_params: WidgetParams::new(),
+            ctx: Context::new(),
         };
         let value_c = sub_gauge.value.clone();
         sub_gauge.frame.draw(move |w| {
@@ -80,17 +82,27 @@ impl SubGauge {
         info!("SubGauge::config()");
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
-                self.grp
-                    .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
-                self.frame
-                    .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
+                self.grp.resize(
+                    pos.0 * self.ctx.grid_width,
+                    pos.1 * self.ctx.grid_height,
+                    size.0 * self.ctx.grid_width,
+                    size.1 * self.ctx.grid_height,
+                );
+                self.frame.resize(
+                    pos.0 * self.ctx.grid_width,
+                    pos.1 * self.ctx.grid_height,
+                    size.0 * self.ctx.grid_width,
+                    size.1 * self.ctx.grid_height,
+                );
             }
         }
         self.widget_params
-            .label.as_ref()
+            .label
+            .as_ref()
             .map(|s| self.frame.set_label(s.as_str()));
         self.widget_params
-            .src_eval.as_ref()
+            .src_eval
+            .as_ref()
             .map(|expr| build_operator_tree(expr.as_str()).map(|x| self.eval_expr = Some(x)));
     }
 }
@@ -100,6 +112,10 @@ impl PubSubWidget for SubGauge {
         debug!("Status::config() {:?}", props);
         self.widget_params = props;
         self.reconfigure();
+    }
+
+    fn set_context(&mut self, context: Context) {
+        self.ctx = context;
     }
 
     fn get_config(&self) -> Option<WidgetParams> {
@@ -117,8 +133,7 @@ impl PubSubWidget for SubGauge {
                 }
                 debug!(
                     "SubGauge::on() topic: {} vs src_topic : {}",
-                    topic,
-                    src_topic
+                    topic, src_topic
                 );
                 self.eval_expr.as_ref().map(|n| {
                     let mut context = HashMapContext::new();
@@ -152,12 +167,7 @@ impl PubSubWidget for SubGauge {
                     *self.value.borrow_mut() = (f / 1000.) % 100.;
                 });
                 self.last_update = std::time::SystemTime::now();
-                let text = format!(
-                    "{}{}{}",
-                    src_prefix,
-                    message,
-                    src_suffix
-                );
+                let text = format!("{}{}{}", src_prefix, message, src_suffix);
                 self.frame.set_label(&text);
                 self.frame.set_color(Color::from_hex(0x00ff00));
                 self.frame.redraw();

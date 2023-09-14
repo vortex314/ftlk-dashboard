@@ -44,6 +44,8 @@ use std::thread::{self, sleep, Thread};
 //==================================================================================================
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::RwLock;
+
 use tokio::task;
 use tokio::task::block_in_place;
 use tokio::time::{self, Duration};
@@ -58,14 +60,13 @@ mod widget;
 use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
-use widget::*;
 use widget::sub_gauge::SubGauge;
 use widget::sub_status::SubStatus;
 use widget::sub_text::SubText;
-use widget::{PubSubWidget,WidgetParams};
+use widget::*;
+use widget::{PubSubWidget, WidgetParams};
 
 const PATH: &str = "src/config.yaml";
-
 
 use decl::DeclWidget;
 use decl::DeclarativeApp;
@@ -96,27 +97,25 @@ async fn main() {
 
     let (mut tx_publish, mut rx_publish) = broadcast::channel::<PubSubEvent>(16);
     let (mut tx_redis_cmd, mut rx_redis_cmd) = channel::<PubSubCmd>(16);
-
-    let pixels: Vec<i64> = config["screen"]["resolution"]
+    let mut context = Context::new();
+    let screen_resolution: Vec<i64> = config["screen"]["resolution"]
         .as_sequence()
         .unwrap()
         .iter()
         .map(|x| x.as_i64().unwrap_or(400))
         .collect();
-    CONTEXT.blocking_write().screen_width = pixels[0] as i32;
-    info!("ctx_screen_width : {} ",ctx_screen_width());
-    let window_width = pixels[0] as i32;
-    let window_height = pixels[1] as i32;
-    info!("Screen resolution {} x {}", window_width, window_height);
-
     let grid: Vec<i64> = config["screen"]["grid"]
-        .as_sequence()
-        .unwrap()
-        .iter()
-        .map(|x| x.as_i64().unwrap_or(32))
-        .collect();
-    let grid_cols = grid[0] as i32;
-    let grid_rows = grid[1] as i32;
+    .as_sequence()
+    .unwrap()
+    .iter()
+    .map(|x| x.as_i64().unwrap_or(32))
+    .collect();
+
+    context.screen_width = screen_resolution[0] as i32;
+    context.screen_height = screen_resolution[1] as i32;
+    context.grid_width = grid[0] as i32;
+    context.grid_height = grid[1] as i32;
+
 
     let redis_config = config["redis"].clone();
     let mqtt_config = config["mqtt"].clone();
@@ -139,17 +138,17 @@ async fn main() {
     let mut _app = App::default().with_scheme(AppScheme::Oxy);
     let config = config.clone();
     let mut win = window::Window::default()
-        .with_size(window_width, window_height)
+        .with_size(context.screen_width, context.screen_height)
         .with_label("FLTK dashboard");
     win.make_resizable(true);
 
     let mut entry_list = EntryList::new();
 
-    let mut tab = Tabs::new(0, 0, window_width, window_height, "");
+    let mut tab = Tabs::new(0, 0, context.screen_width, context.screen_height, "");
 
-    let grp_table = group::Group::new(20, 20, window_width - 20, window_height - 20, "Table");
+    let grp_table = group::Group::new(20, 20, context.screen_width - 20, context.screen_height - 20, "Table");
     let mut table = SmartTable::default()
-        .with_size(window_width - 20, window_height - 20)
+        .with_size(context.screen_width - 20, context.screen_height - 20)
         .center_of_parent()
         .with_opts(TableOpts {
             rows: 1000,
@@ -180,7 +179,7 @@ async fn main() {
     grp_table.end();
 
     let mut grp_dashboard =
-        group::Group::new(20, 20, window_width - 20, window_height - 20, "Dashboard");
+        group::Group::new(20, 20, context.screen_width - 20, context.screen_height - 20, "Dashboard");
 
     {
         let mut button = Button::new(20, 20, 32, 32, "@filesave");
@@ -196,10 +195,7 @@ async fn main() {
                 for widget in wrc2.borrow().iter() {
                     let param = widget.borrow().get_config().unwrap();
                     let param_value = serde_yaml::to_value(param).unwrap();
-                   widgets_value
-                        .as_sequence_mut()
-                        .unwrap()
-                        .push(param_value);
+                    widgets_value.as_sequence_mut().unwrap().push(param_value);
                 }
                 map_all.insert("widgets".to_string(), widgets_value);
                 let cfg = serde_yaml::to_string(&map_all).unwrap().to_string();
@@ -217,21 +213,24 @@ async fn main() {
             .iter()
             .for_each(move |m| {
                 let widget_type = m["widget"].as_str().unwrap();
-                let wiget_par  = serde_yaml::to_string(&m).unwrap().to_string();
+                let wiget_par = serde_yaml::to_string(&m).unwrap().to_string();
                 match widget_type {
                     "SubStatus" => {
                         let mut widget = SubStatus::new();
                         WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                     }
                     "SubText" => {
                         let mut widget = SubText::new();
                         WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                     }
                     "SubGauge" => {
                         let mut widget = SubGauge::new();
                         WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                     }
                     _ => {

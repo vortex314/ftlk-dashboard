@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
-use crate::widget::{PubSubWidget, WidgetParams};
+use crate::widget::{PubSubWidget, WidgetParams,Context};
 use tokio::sync::mpsc;
 
 use fltk::widget::Widget;
@@ -15,6 +15,7 @@ pub struct Gauge {
     value: f64,
     frame: frame::Frame,
     widget_params: WidgetParams,
+    ctx: Context,
 }
 
 impl Gauge {
@@ -24,6 +25,7 @@ impl Gauge {
             value: 0.,
             frame: frame::Frame::default().with_label("Gauge"),
             widget_params: WidgetParams::new(),
+            ctx: Context::new(),
         }
     }
     fn reconfigure(&mut self) {
@@ -31,7 +33,10 @@ impl Gauge {
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
                 self.frame
-                    .resize(pos.0 * 32, pos.1 * 32, size.0 * 32, size.1 * 32);
+                    .resize(pos.0 * self.ctx.grid_width,
+                        pos.1 * self.ctx.grid_height,
+                        size.0 * self.ctx.grid_width,
+                        size.1 * self.ctx.grid_height,);
             }
         }
         self.widget_params
@@ -44,6 +49,10 @@ impl PubSubWidget for Gauge {
     fn set_config(&mut self, props: WidgetParams) {
         self.widget_params = props;
         self.reconfigure();
+    }
+
+    fn set_context(&mut self, context: super::Context) {
+        self.ctx = context;
     }
 
     fn get_config(&self) -> Option<WidgetParams> {

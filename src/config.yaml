@@ -1,6 +1,6 @@
 screen:
   resolution: [1024,768]
-  grid: [32,24]
+  grid: [32,32]
 mqtt:
   host: "pcthink.local"
   port: 1883

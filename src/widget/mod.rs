@@ -116,6 +116,7 @@ pub trait PubSubWidget {
     fn set_publish_channel(&mut self, channel: mpsc::Sender<PubSubEvent>);
     fn set_config(&mut self, props: WidgetParams);
     fn get_config(&self) -> Option<WidgetParams>;
+    fn set_context(&mut self, context: Context);
 }
 
 #[derive(Debug, Clone)]
@@ -148,18 +149,7 @@ impl Context {
     }
     
 }
-lazy_static! {
-    pub static ref CONTEXT : RwLock<Context> = RwLock::new(Context::new());
-}
 
-pub fn ctx_screen_height() -> i32 { CONTEXT.try_read().unwrap().screen_height }
-pub fn ctx_screen_width() -> i32 { CONTEXT.try_read().unwrap().screen_width }
-pub fn ctx_grid_width() -> i32 { CONTEXT.try_read().unwrap().grid_width }
-pub fn ctx_grid_height() -> i32 { CONTEXT.try_read().unwrap().grid_height }
-pub fn ctx_background_color() -> enums::Color { CONTEXT.try_read().unwrap().background_color }
-pub fn ctx_font_color() -> enums::Color { CONTEXT.try_read().unwrap().font_color }
-pub fn ctx_valuator_color() -> enums::Color { CONTEXT.try_read().unwrap().valuator_color }
-pub fn ctx_theme() -> String { CONTEXT.try_read().unwrap().theme.clone() }
 
 
 
