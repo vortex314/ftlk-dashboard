@@ -19,6 +19,7 @@ pub mod gauge;
 pub mod sub_gauge;
 pub mod sub_status;
 pub mod sub_text;
+pub mod sub_chart;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WidgetParams {
@@ -201,10 +202,16 @@ pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
                 win.end();
                 win.show();
             }*/
+            info!(
+                "Push {} {} {} ",
+                app::event_x(),
+                app::event_y(),
+                app::event_button()
+            );
             true // Important! to make Drag work
         }
         enums::Event::Drag => {
-            debug!(
+            info!(
                 "Drag {} {} {} ",
                 app::event_x(),
                 app::event_y(),
@@ -239,6 +246,8 @@ pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
             }
             true
         }*/
-        _ => false,
+        _ => {
+            false
+        }
     }
 }

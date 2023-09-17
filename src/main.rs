@@ -63,6 +63,7 @@ use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
 use widget::sub_status::SubStatus;
 use widget::sub_text::SubText;
+use widget::sub_chart::SubChart;
 use widget::*;
 use widget::{PubSubWidget, WidgetParams};
 
@@ -223,6 +224,12 @@ async fn main() {
                     }
                     "SubText" => {
                         let mut widget = SubText::new();
+                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
+                        widget.set_context(context.clone());
+                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
+                    }
+                    "SubChart" => {
+                        let mut widget = SubChart::new();
                         WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
                         widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
