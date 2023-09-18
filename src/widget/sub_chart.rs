@@ -31,11 +31,10 @@ pub struct SubChart {
 impl SubChart {
     pub fn new() -> Self {
         info!("SubChart::new()");
-        let mut chart = misc::Chart::default().with_label("SubChart");
-
-        chart.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
+        let mut chart = misc::Chart::default();
+        chart.handle(move |w, ev| dnd_callback(& mut w.as_base_widget(), ev));
         SubChart {
-            chart: misc::Chart::default().size_of_parent(),
+            chart,
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
             widget_params: WidgetParams::new(),
@@ -58,7 +57,8 @@ impl SubChart {
         self.chart.set_type(misc::ChartType::Line);
         self.chart.set_bounds(0.0, 100.0);
         self.chart.set_text_size(18);
-        self.chart.add(88.4, "Rust", enums::Color::from_u32(0xcc9c59));
+        self.chart
+            .add(88.4, "Rust", enums::Color::from_u32(0xcc9c59));
         self.chart.add(8.4, "C++", enums::Color::Red);
         self.chart.add(3.2, "C", enums::Color::Black);
         self.chart.set_color(enums::Color::White);

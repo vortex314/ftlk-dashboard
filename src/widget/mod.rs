@@ -190,18 +190,6 @@ pub fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y
 pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
     match ev {
         enums::Event::Push => {
-            /*if app::event_button() == 3 {
-                let mut win =
-                    window::Window::new(app::event_x_root(), app::event_y_root(), 400, 300, "Dialog");
-                let mut input = input::Input::new(100, 100, 160, 25, "Input");
-                input.set_value("Hello World!");
-                let mut button = Button::new(100, 150, 160, 25, "Ok");
-                button.set_callback(|w| {
-                    w.parent().unwrap().hide();
-                });
-                win.end();
-                win.show();
-            }*/
             info!(
                 "Push {} {} {} ",
                 app::event_x(),
@@ -222,31 +210,8 @@ pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
             }
             true
         }
-        /*enums::Event::Move => {
-            info!(
-                "Move {} {} {} ",
-                app::event_x(),
-                app::event_y(),
-                app::event_button()
-            );
-            let dist_right_border = (w.x() + w.w() - app::event_x()).abs();
-            let dist_bottom_border = (w.y() + w.h() - app::event_y()).abs();
-            let is_on_right_bottom_corner = (dist_right_border < 10 && dist_bottom_border < 10);
-            info!(
-                "dist_right_border {} dist_bottom_border {} is_on_right_bottom_corner {}",
-                dist_right_border, dist_bottom_border, is_on_right_bottom_corner
-            );
-            let mut win = w.window().unwrap();
-            if is_on_right_bottom_corner {
-                info!("is_on_right_bottom_corner");
-                win.set_cursor(enums::Cursor::SE);
-                w.set_size(app::event_x() - w.x(), app::event_y() - w.y());
-            } else {
-                win.set_cursor(enums::Cursor::Default);
-            }
-            true
-        }*/
         _ => {
+            // info!(" event {:?}",ev);
             false
         }
     }
