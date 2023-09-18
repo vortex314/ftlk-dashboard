@@ -13,7 +13,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use tokio::sync::mpsc;
 
-use lazy_static::lazy_static;
 
 pub mod gauge;
 pub mod sub_gauge;
