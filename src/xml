@@ -1,0 +1,66 @@
+<RequestMessage>
+    <RequestHeader></RequestHeader>
+    <RequestBody>
+        <MsgInfoSection>
+            <HeaderMain>
+                <Message>
+                    <Protocole>99</Protocole>
+                </Message>
+            </HeaderMain>
+            <HeaderOutgoing>
+                <ApplicationCreationDateTime>
+                    <Date>20230918</Date>
+                    <Time>210304</Time>
+                </ApplicationCreationDateTime>
+                <IngEntityInformation>
+                    <Branch>399</Branch>
+                    <BIC>INGBNL2SSMK</BIC>
+                    <Department>CST</Department>
+                    <Application>CAT</Application>
+                    <Reference>68549298</Reference>
+                </IngEntityInformation>
+                <Receiver>
+                    <Structure>01</Structure>
+                    <Identite>
+                        <BIC>INGBNL2AXXX</BIC>
+                    </Identite>
+                </Receiver>
+                <MsgType>536</MsgType>
+                <Priority>50</Priority>
+                <ExpeditionWay>20</ExpeditionWay>
+                <DeliveryNot>2</DeliveryNot>
+                <InternalAction>
+                    <Code>04</Code>
+                    <DestinationMQ>
+                        <Type>41</Type>
+                        <MQ>INGBNL2S_CAT</MQ>
+                    </DestinationMQ>
+                </InternalAction>
+                <NetworkAction>
+                    <Code>04</Code>
+                    <DestinationMQ>
+                        <Type>42</Type>
+                        <MQ>INGBNL2S_CAT</MQ>
+                    </DestinationMQ>
+                </NetworkAction>
+            </HeaderOutgoing>
+        </MsgInfoSection>
+        <DataSection>
+            <DataInSwiftMode><![CDATA[{1:F01INGBNL2SASMK0000000000}{2:I536INGBNL2AXXXXN}{3:{108:68549298}}{4:⏎
+:16R:GENL⏎
+:28E:1/ONLY⏎
+:20C::SEME//68549298⏎
+:23G:NEWM⏎
+:98C::PREP//20230918210304⏎
+:69A::STAT//20230918/20230918⏎
+:22F::SFRE//DAIL⏎
+:22F::CODE//DELT⏎
+:22F::STBA//SETT⏎
+:97A::SAFE//7025610001⏎
+:17B::ACTI//N⏎
+:17B::CONS//N⏎
+:16S:GENL⏎
+-}]]></DataInSwiftMode>
+        </DataSection>
+    </RequestBody>
+</RequestMessage>

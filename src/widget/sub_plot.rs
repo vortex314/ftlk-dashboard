@@ -1,3 +1,8 @@
+/*
+based on plotters demo : https://github.com/fltk-rs/demos/tree/master/plotters
+canvas gauges code to copy : https://github.com/Mikhus/canvas-gauges
+https://canvas-gauges.com/documentation/examples/ : looks good !
+*/
 use fltk::button::Button;
 use fltk::enums::Color;
 use fltk::widget::Widget;
@@ -33,8 +38,8 @@ use evalexpr::Value as V;
 use evalexpr::*;
 use rand::prelude::*;
 
-#[derive(Debug, Clone)]
-pub struct SubChart {
+#[derive(Clone)]
+pub struct SubPlot {
     frame: frame::Frame,
     buf: Vec<u8>,
     cs: ChartState<Cartesian2d<RangedCoordf32, RangedCoordf32>>,
@@ -43,42 +48,46 @@ pub struct SubChart {
     eval_expr: Option<Node>,
     widget_params: WidgetParams,
     ctx: Context,
+    start_ts: SystemTime,
 }
 
-impl SubChart {
+impl SubPlot {
     pub fn new() -> Self {
         let mut buf = vec![0u8; W * H * 3];
-        let mut frame = frame::Frame::default().with_label("SubChart");
-        let root =
-            BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (W as u32, H as u32))?
+        let mut frame = frame::Frame::default().with_label("SubPlot");
+        frame.handle(|f, ev| dnd_callback(&mut f.as_base_widget(), ev));
+        let drawing_area =
+            BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (W as u32, H as u32))
+                .unwrap()
                 .into_drawing_area();
-        root.fill(&BLACK).unwrap();
-        let mut chart = ChartBuilder::on(&root)
+        drawing_area.fill(&BLACK).unwrap();
+        let mut chart_builder = ChartBuilder::on(&drawing_area);
+        let mut chart_context = chart_builder
             .margin(10)
             .x_label_area_size(5)
             .y_label_area_size(5)
             .build_cartesian_2d(0f32..(W as f32), 0f32..(H as f32))
             .unwrap();
-        chart
+        chart_context
             .configure_mesh()
             .label_style(("sans-serif", 15).into_font().color(&GREEN))
             .axis_style(&GREEN)
             .draw()
             .unwrap();
 
-        let cs = chart.into_chart_state();
-        drop(root);
-        let start_ts = SystemTime::now();
+        let cs = chart_context.into_chart_state();
+        drop(drawing_area);
         let mut last_flushed = 0.0;
-        SubChart {
+        SubPlot {
             frame,
             buf,
-            cs: cs,
+            cs,
             data: VecDeque::new(),
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
             widget_params: WidgetParams::new(),
             ctx: Context::new(),
+            start_ts: SystemTime::now(),
         }
     }
 
@@ -98,11 +107,47 @@ impl SubChart {
             .src_eval
             .as_ref()
             .map(|expr| build_operator_tree(expr.as_str()).map(|x| self.eval_expr = Some(x)));
+        self.draw();
         // Do proper error handling here
+    }
+
+    fn draw(&mut self) {
+        let w = self.frame.w();
+        let h = self.frame.h();
+        let mut buf = vec![0u8; (w * h * 3) as usize];
+        let epoch = SystemTime::now()
+            .duration_since(self.start_ts)
+            .unwrap()
+            .as_secs_f64();
+        let drawing_area =
+            BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (w as u32, h as u32))
+                .unwrap()
+                .into_drawing_area();
+        let mut chart_context = self.cs.clone().restore(&drawing_area);
+        chart_context.plotting_area().fill(&BLACK).unwrap();
+
+        chart_context
+            .configure_mesh()
+            .bold_line_style(&GREEN.mix(0.5))
+            .light_line_style(&TRANSPARENT)
+            .draw()
+            .unwrap();
+
+        /*chart_context
+            .draw_series(self.data.iter().zip(self.data.iter().skip(1)).map(
+                |(&(x0, y0), &(x1, y1))| {
+                    PathElement::new(vec![(x0, y0), (x1, y1)], &GREEN);
+                },
+            ))
+            .unwrap();*/
+        drop(drawing_area);
+        drop(chart_context);
+
+        draw::draw_rgb(&mut self.frame, &buf).unwrap();
     }
 }
 
-impl PubSubWidget for SubChart {
+impl PubSubWidget for SubPlot {
     fn set_config(&mut self, props: WidgetParams) {
         debug!("Status::config() {:?}", props);
         self.widget_params = props;
@@ -120,7 +165,7 @@ impl PubSubWidget for SubChart {
         let src_topic = self.widget_params.src_topic.clone().unwrap_or("".into());
         let src_prefix = self.widget_params.src_prefix.clone().unwrap_or("".into());
         let src_suffix = self.widget_params.src_suffix.clone().unwrap_or("".into());
-
+        let max_samples: usize = self.widget_params.src_samples.unwrap_or(100) as usize;
         match event {
             PubSubEvent::Publish { topic, message } => {
                 if topic == src_topic {
@@ -129,6 +174,17 @@ impl PubSubWidget for SubChart {
                         "SubChart::on() topic: {} vs src_topic : {}",
                         topic, src_topic
                     );
+                    let _ = message.parse::<f64>().map(|f| {
+                        let epoch = SystemTime::now()
+                            .duration_since(self.start_ts)
+                            .unwrap()
+                            .as_secs_f64();
+                        self.data.push_back((epoch, f));
+                        if self.data.len() > max_samples {
+                            self.data.pop_front();
+                        }
+                        self.draw();
+                    }).unwrap();
                     self.eval_expr.as_ref().map(|n| {
                         let mut context = HashMapContext::new();
                         context
@@ -160,33 +216,6 @@ impl PubSubWidget for SubChart {
                 }
             }
             PubSubEvent::Timer1sec => {
-                let root = BitMapBackend::<RGBPixel>::with_buffer_and_format(
-                    &mut self.buf,
-                    (W as u32, H as u32),
-                )?
-                .into_drawing_area();
-                let mut chart = self.cs.clone().restore(&root);
-                chart.plotting_area().fill(&BLACK)?;
-
-                chart
-                    .configure_mesh()
-                    .bold_line_style(&GREEN.mix(0.2))
-                    .light_line_style(&TRANSPARENT)
-                    .draw()?;
-
-                chart.draw_series(self.data.iter().zip(self.data.iter().skip(1)).map(
-                    |(&(e, x0, y0), &(_, x1, y1))| {
-                        PathElement::new(
-                            vec![(x0, y0), (x1, y1)],
-                            &GREEN.mix(((e - epoch) * 20.0).exp()),
-                        )
-                    },
-                ))?;
-
-                drop(root);
-                drop(chart);
-
-                draw::draw_rgb(&mut frame, &buf).unwrap();
 
                 /*let delta = std::time::SystemTime::now()
                     .duration_since(self.last_update)

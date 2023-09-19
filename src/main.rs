@@ -63,7 +63,7 @@ use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
 use widget::sub_status::SubStatus;
 use widget::sub_text::SubText;
-use widget::sub_chart::SubChart;
+use widget::sub_plot::SubPlot;
 use widget::*;
 use widget::{PubSubWidget, WidgetParams};
 
@@ -216,8 +216,8 @@ async fn main() {
                 let widget_type = m["widget"].as_str().unwrap();
                 let wiget_par = serde_yaml::to_string(&m).unwrap().to_string();
                 match widget_type {
-                    "SubStatus" => {
-                        let mut widget = SubStatus::new();
+                    "SubPlot" => {
+                        let mut widget = SubPlot::new();
                         WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
                         widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
@@ -228,8 +228,8 @@ async fn main() {
                         widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
                     }
-                    "SubChart" => {
-                        let mut widget = SubChart::new();
+                    "SubStatus" => {
+                        let mut widget = SubStatus::new();
                         WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
                         widget.set_context(context.clone());
                         wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));

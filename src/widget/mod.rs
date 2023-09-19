@@ -18,7 +18,7 @@ pub mod gauge;
 pub mod sub_gauge;
 pub mod sub_status;
 pub mod sub_text;
-pub mod sub_chart;
+pub mod sub_plot;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WidgetParams {
@@ -61,7 +61,12 @@ pub struct WidgetParams {
     dst_off: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dst_format: Option<String>,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
+    samples_timespan_sec: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    samples_max_count: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    y_range: Option<Vec<f64>>,
 }
 // get WidgetParams from yaml value
 
@@ -88,6 +93,9 @@ impl WidgetParams {
             dst_on: None,
             dst_off: None,
             dst_format: None,
+            samples_timespan_sec: None,
+            samples_max_count: None,
+            y_range: None,
         }
     }
     pub fn from_value(v: Value) -> Option<WidgetParams> {
@@ -189,21 +197,9 @@ pub fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y
 pub fn dnd_callback(w: &mut Widget, ev: enums::Event) -> bool {
     match ev {
         enums::Event::Push => {
-            info!(
-                "Push {} {} {} ",
-                app::event_x(),
-                app::event_y(),
-                app::event_button()
-            );
             true // Important! to make Drag work
         }
         enums::Event::Drag => {
-            info!(
-                "Drag {} {} {} ",
-                app::event_x(),
-                app::event_y(),
-                app::event_button()
-            );
             if grid_pos_change(w, app::event_x(), app::event_y(), 32, 32) {
                 w.parent().unwrap().parent().unwrap().redraw();
             }

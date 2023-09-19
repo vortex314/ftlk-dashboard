@@ -8,12 +8,14 @@ redis:
   host: "pcthink.local"
   port: 6379
 widgets:
-  - widget: SubChart
-    label: "Chart"
+  - widget: SubPlot
+    label: "Plotter"
     pos: [8,8]
     size: [8,8]
-    host: "pcthink.local"
-    port: 6379
+    src_topics: ["dst/ESP32-44592/motor/rpm_measured","dst/ESP32-44592/motor/rpm_setpoint"]
+    samples_timespan_sec: 60
+    samples_max_count: 1000
+    y_range: [0.,3000.]
   - widget: SubStatus
     label: "USB-serial"
     pos: [6,1]
