@@ -42,7 +42,7 @@ use rand::prelude::*;
 pub struct SubPlot {
     frame: frame::Frame,
     buf: Vec<u8>,
-    cs: ChartState<Cartesian2d<RangedCoordf32, RangedCoordf32>>,
+    //    cs: ChartState<Cartesian2d<RangedCoordf32, RangedCoordf32>>,
     data: VecDeque<(f64, f64)>,
     last_update: SystemTime,
     eval_expr: Option<Node>,
@@ -56,32 +56,10 @@ impl SubPlot {
         let mut buf = vec![0u8; W * H * 3];
         let mut frame = frame::Frame::default().with_label("SubPlot");
         frame.handle(|f, ev| dnd_callback(&mut f.as_base_widget(), ev));
-        let drawing_area =
-            BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (W as u32, H as u32))
-                .unwrap()
-                .into_drawing_area();
-        drawing_area.fill(&BLACK).unwrap();
-        let mut chart_builder = ChartBuilder::on(&drawing_area);
-        let mut chart_context = chart_builder
-            .margin(10)
-            .x_label_area_size(5)
-            .y_label_area_size(5)
-            .build_cartesian_2d(0f32..(W as f32), 0f32..(H as f32))
-            .unwrap();
-        chart_context
-            .configure_mesh()
-            .label_style(("sans-serif", 15).into_font().color(&GREEN))
-            .axis_style(&GREEN)
-            .draw()
-            .unwrap();
-
-        let cs = chart_context.into_chart_state();
-        drop(drawing_area);
         let mut last_flushed = 0.0;
         SubPlot {
             frame,
             buf,
-            cs,
             data: VecDeque::new(),
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
@@ -119,30 +97,38 @@ impl SubPlot {
             .duration_since(self.start_ts)
             .unwrap()
             .as_secs_f64();
-        let drawing_area =
-            BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (w as u32, h as u32))
-                .unwrap()
-                .into_drawing_area();
-        let mut chart_context = self.cs.clone().restore(&drawing_area);
-        chart_context.plotting_area().fill(&BLACK).unwrap();
+        {
+            let drawing_area =
+                BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (w as u32, h as u32))
+                    .unwrap()
+                    .into_drawing_area();
+            drawing_area.fill(&WHITE).unwrap();
+            let mut chart_context = ChartBuilder::on(&drawing_area)
+                .margin(10)
+                .set_all_label_area_size(30)
+                .build_cartesian_2d(0.0..50., -1.2..1.2)
+                .unwrap();
 
-        chart_context
-            .configure_mesh()
-            .bold_line_style(&GREEN.mix(0.5))
-            .light_line_style(&TRANSPARENT)
-            .draw()
-            .unwrap();
-
-        /*chart_context
+            chart_context
+                .configure_mesh()
+                .bold_line_style(&GREEN.mix(0.5))
+                .light_line_style(&TRANSPARENT)
+                .draw()
+                .unwrap();
+            chart_context
+                .draw_series(LineSeries::new(
+                    self.data.iter().map(|&(x, y)| (x, y)),
+                    &RED,
+                ))
+                .unwrap();
+            /*chart_context
             .draw_series(self.data.iter().zip(self.data.iter().skip(1)).map(
                 |(&(x0, y0), &(x1, y1))| {
                     PathElement::new(vec![(x0, y0), (x1, y1)], &GREEN);
                 },
             ))
             .unwrap();*/
-        drop(drawing_area);
-        drop(chart_context);
-
+        };
         draw::draw_rgb(&mut self.frame, &buf).unwrap();
     }
 }
@@ -174,17 +160,21 @@ impl PubSubWidget for SubPlot {
                         "SubChart::on() topic: {} vs src_topic : {}",
                         topic, src_topic
                     );
-                    let _ = message.parse::<f64>().map(|f| {
-                        let epoch = SystemTime::now()
-                            .duration_since(self.start_ts)
-                            .unwrap()
-                            .as_secs_f64();
-                        self.data.push_back((epoch, f));
-                        if self.data.len() > max_samples {
-                            self.data.pop_front();
-                        }
-                        self.draw();
-                    }).unwrap();
+                    let _ = message
+                        .parse::<f64>()
+                        .map(|f| {
+                            let epoch = SystemTime::now()
+                                .duration_since(self.start_ts)
+                                .unwrap()
+                                .as_secs_f64();
+                            info!("Sample added {} : {}", epoch,f);
+                            self.data.push_back((epoch, f));
+                            if self.data.len() > max_samples {
+                                self.data.pop_front();
+                            }
+                            self.draw();
+                        })
+                        .unwrap();
                     self.eval_expr.as_ref().map(|n| {
                         let mut context = HashMapContext::new();
                         context
