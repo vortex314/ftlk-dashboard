@@ -30,7 +30,6 @@ pub struct SubText {
 
 impl SubText {
     pub fn new() -> Self {
-        info!("SubText::new()");
         let mut frame = frame::Frame::default().with_label("SubText");
         frame.set_frame(FrameType::BorderBox);
         frame.set_color(Color::from_u32(0x555555));
@@ -45,7 +44,7 @@ impl SubText {
     }
 
     fn reconfigure(&mut self) {
-        info!("SubText::config() {:?}", self.widget_params);
+        info!("SubText::topic {}", self.widget_params.src_topic.clone().unwrap_or("".into()));
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
                 self.frame.resize(

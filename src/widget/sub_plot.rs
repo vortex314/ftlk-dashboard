@@ -31,7 +31,7 @@ use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
 use crate::widget::dnd_callback;
 use crate::widget::hms;
-use crate::widget::{Context, GridRectangle, PubSubWidget, WidgetParams};
+use crate::widget::{Context, GridRectangle, PubSubWidget, WidgetParams,CONTEXT};
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
@@ -70,7 +70,7 @@ impl SubPlot {
     }
 
     fn reconfigure(&mut self) {
-        info!("SubChart::config() {:?}", self.widget_params);
+        info!("SubPlot::topic {}", self.widget_params.src_topic.clone().unwrap_or("".into()));
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
                 self.frame.resize(
@@ -86,12 +86,16 @@ impl SubPlot {
             .as_ref()
             .map(|expr| build_operator_tree(expr.as_str()).map(|x| self.eval_expr = Some(x)));
         self.draw();
+        
         // Do proper error handling here
     }
 
     fn draw(&mut self) {
         let w = self.frame.w();
         let h = self.frame.h();
+        let x_range = -(self.widget_params.src_timespan.unwrap_or(60) as f64) ;
+        let y_range = self.widget_params.y_range.clone();
+        let y_range = y_range.unwrap_or(vec!(0.0,1.0));
         let mut buf = vec![0u8; (w * h * 3) as usize];
         let epoch = SystemTime::now()
             .duration_since(self.start_ts)
@@ -106,7 +110,7 @@ impl SubPlot {
             let mut chart_context = ChartBuilder::on(&drawing_area)
                 .margin(10)
                 .set_all_label_area_size(30)
-                .build_cartesian_2d(0.0..50., -1.2..1.2)
+                .build_cartesian_2d(x_range .. 0.0, y_range[0]..y_range[1])
                 .unwrap();
 
             chart_context
@@ -115,9 +119,10 @@ impl SubPlot {
                 .light_line_style(&TRANSPARENT)
                 .draw()
                 .unwrap();
+            let now = now() ;
             chart_context
                 .draw_series(LineSeries::new(
-                    self.data.iter().map(|&(x, y)| (x, y)),
+                    self.data.iter().map(|&(x, y)| (x - now , y)),
                     &RED,
                 ))
                 .unwrap();
@@ -131,6 +136,15 @@ impl SubPlot {
         };
         draw::draw_rgb(&mut self.frame, &buf).unwrap();
     }
+
+
+}
+
+fn now() -> f64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64()
 }
 
 impl PubSubWidget for SubPlot {
@@ -156,19 +170,12 @@ impl PubSubWidget for SubPlot {
             PubSubEvent::Publish { topic, message } => {
                 if topic == src_topic {
                     let mut value = message.clone();
-                    debug!(
-                        "SubChart::on() topic: {} vs src_topic : {}",
-                        topic, src_topic
-                    );
                     let _ = message
                         .parse::<f64>()
                         .map(|f| {
-                            let epoch = SystemTime::now()
-                                .duration_since(self.start_ts)
-                                .unwrap()
-                                .as_secs_f64();
-                            info!("Sample added {} : {}", epoch,f);
-                            self.data.push_back((epoch, f));
+                            let now = now();
+                            info!("Sample added {} : {}", now,f);
+                            self.data.push_back((now, f));
                             if self.data.len() > max_samples {
                                 self.data.pop_front();
                             }
@@ -206,7 +213,7 @@ impl PubSubWidget for SubPlot {
                 }
             }
             PubSubEvent::Timer1sec => {
-
+                self.draw();
                 /*let delta = std::time::SystemTime::now()
                     .duration_since(self.last_update)
                     .unwrap()

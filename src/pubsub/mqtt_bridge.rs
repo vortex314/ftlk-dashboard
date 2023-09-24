@@ -44,7 +44,7 @@ pub async fn mqtt(config: Value, tx_broadcast: broadcast::Sender<PubSubEvent>) {
             let read_result = client.read_subscriptions().await;
             match read_result {
                 Ok(msg) => {
-                    info!("Mqtt : {} => {} ", msg.topic().to_string(),String::from_utf8_lossy(msg.payload()).to_string());
+                    debug!("Mqtt : {} => {} ", msg.topic().to_string(),String::from_utf8_lossy(msg.payload()).to_string());
                     match tx_broadcast.send(PubSubEvent::Publish {
                         topic: msg.topic().to_string(),
                         message: String::from_utf8_lossy(msg.payload()).to_string(),

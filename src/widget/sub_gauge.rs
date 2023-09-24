@@ -32,7 +32,6 @@ pub struct SubGauge {
 
 impl SubGauge {
     pub fn new() -> Self {
-        info!("SubGauge::new()");
         let mut grp = group::Group::default().with_align(Align::Top);
         let mut frame = frame::Frame::default()
             .with_label("50%")
@@ -79,7 +78,7 @@ impl SubGauge {
     }
 
     fn reconfigure(&mut self) {
-        info!("SubGauge::config()");
+        info!("SubGauge::topic {:?}", self.widget_params.src_topic.clone().unwrap_or("".into()));
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
                 self.grp.resize(

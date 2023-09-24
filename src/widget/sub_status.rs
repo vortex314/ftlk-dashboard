@@ -29,7 +29,6 @@ pub struct SubStatus {
 
 impl SubStatus {
     pub fn new() -> SubStatus {
-        info!("Status::new()");
         let mut status_frame = frame::Frame::default().with_label("Status");
         status_frame.set_frame(FrameType::BorderBox);
         status_frame.set_color(Color::from_u32(0xff0000));
@@ -44,6 +43,7 @@ impl SubStatus {
     }
 
     fn reconfigure(&mut self) {
+        info!("Status::topic {:?}", self.widget_params.src_topic.clone().unwrap_or("".into()));
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
                 self.status_frame.resize(

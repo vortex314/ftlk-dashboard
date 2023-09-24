@@ -8,17 +8,16 @@ use fltk::*;
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
 use serde_yaml::Value;
-use tokio::sync::RwLock;
 use std::cell::RefCell;
 use std::rc::Rc;
 use tokio::sync::mpsc;
-
+use tokio::sync::RwLock;
 
 pub mod gauge;
 pub mod sub_gauge;
+pub mod sub_plot;
 pub mod sub_status;
 pub mod sub_text;
-pub mod sub_plot;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WidgetParams {
@@ -137,12 +136,12 @@ pub struct Context {
     pub font_color: enums::Color,
     pub valuator_color: enums::Color,
 
-    pub theme: String,
-    pub publish_channel: mpsc::Sender<PubSubEvent>,
+    pub theme: Option<String>,
+    pub publish_channel: Option<mpsc::Sender<PubSubEvent>>,
 }
 
 impl Context {
-    pub fn new() -> Context {
+    pub const fn new() ->   Context {
         Context {
             grid_width: 32,
             grid_height: 32,
@@ -151,15 +150,13 @@ impl Context {
             background_color: enums::Color::from_hex(0x2a2a2a),
             font_color: enums::Color::Black,
             valuator_color: enums::Color::Blue,
-            theme: "gtk".to_string(),
-            publish_channel: mpsc::channel(100).0,
+            theme: None,
+            publish_channel: None,
         }
     }
-    
 }
 
-
-
+static mut CONTEXT: Context =  Context::new() ;
 
 #[derive(Debug, Clone)]
 pub struct GridRectangle {
