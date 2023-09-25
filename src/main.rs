@@ -67,6 +67,8 @@ use widget::sub_plot::SubPlot;
 use widget::*;
 use widget::{PubSubWidget, WidgetParams};
 
+use rand::random;
+
 const PATH: &str = "src/config.yaml";
 
 use decl::DeclWidget;
@@ -257,6 +259,11 @@ async fn main() {
         debug!("add_timeout3");
         widgets_rc.borrow().iter().for_each(|w| {
             w.borrow_mut().on(PubSubEvent::Timer1sec);
+            let y: f64 = random();
+            w.borrow_mut().on(PubSubEvent::Publish {
+                topic: "test".to_string(),
+                message: y.to_string(),
+            });
         });
         app::repeat_timeout3(1.0, _x);
     });

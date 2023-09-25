@@ -11,11 +11,11 @@ widgets:
   - widget: SubPlot
     label: "Plotter"
     pos: [8,8]
-    size: [8,8]
-    src_topic: "src/ESP32-44592/motor/rpm_measured"
+    size: [12,12]
+    src_topic: "test"
     samples_timespan_sec: 60
     samples_max_count: 1000
-    y_range: [0.,3000.]
+    y_range: [-1.,1.]
   - widget: SubStatus
     label: "USB-serial"
     pos: [6,1]
@@ -46,9 +46,8 @@ widgets:
     pos: [14,2]
     size: [6,6]
     label: "Latency"
-    src_topic: "dst/ESP32-44592/sys/loopback"
+    src_topic: "test"
     src_prefix: ""
     src_suffix: " sec"
     src_timeout:  3000
-    src_range: [0.,1000.]
-    src_eval: "msg_i64 / 1000."
+    src_range: [0.,1.]

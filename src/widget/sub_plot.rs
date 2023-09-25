@@ -97,10 +97,6 @@ impl SubPlot {
         let y_range = self.widget_params.y_range.clone();
         let y_range = y_range.unwrap_or(vec!(0.0,1.0));
         let mut buf = vec![0u8; (w * h * 3) as usize];
-        let epoch = SystemTime::now()
-            .duration_since(self.start_ts)
-            .unwrap()
-            .as_secs_f64();
         {
             let drawing_area =
                 BitMapBackend::<RGBPixel>::with_buffer_and_format(&mut buf, (w as u32, h as u32))
@@ -126,13 +122,6 @@ impl SubPlot {
                     &RED,
                 ))
                 .unwrap();
-            /*chart_context
-            .draw_series(self.data.iter().zip(self.data.iter().skip(1)).map(
-                |(&(x0, y0), &(x1, y1))| {
-                    PathElement::new(vec![(x0, y0), (x1, y1)], &GREEN);
-                },
-            ))
-            .unwrap();*/
         };
         draw::draw_rgb(&mut self.frame, &buf).unwrap();
     }
@@ -174,7 +163,7 @@ impl PubSubWidget for SubPlot {
                         .parse::<f64>()
                         .map(|f| {
                             let now = now();
-                            info!("Sample added {} : {}", now,f);
+                            info!("SubPlot:{} = {}", now,f);
                             self.data.push_back((now, f));
                             if self.data.len() > max_samples {
                                 self.data.pop_front();

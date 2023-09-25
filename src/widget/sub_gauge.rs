@@ -30,6 +30,16 @@ pub struct SubGauge {
     ctx: Context,
 }
 
+fn clap(x:f64,min:f64,max:f64) -> f64 {
+    if x < min {
+        min
+    } else if x > max {
+        max
+    } else {
+        x
+    }
+}
+
 impl SubGauge {
     pub fn new() -> Self {
         let mut grp = group::Group::default().with_align(Align::Top);
@@ -49,8 +59,9 @@ impl SubGauge {
         };
         let value_c = sub_gauge.value.clone();
         sub_gauge.frame.draw(move |w| {
-            let value = *value_c.borrow();
-            let angle = (100. - value) * 2.7 - 45.;
+            let (min,max) = sub_gauge.widget_params.src_range.unwrap_or((0., 100.));
+            let value = clap(*value_c.borrow(),min,max);
+            let angle = ((max - value)/(max-min)) * 270. - 45.;
             draw::set_draw_hex_color(0xe0e0e0);
             draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
             draw::set_draw_hex_color(0x0000ff);
@@ -130,10 +141,6 @@ impl PubSubWidget for SubGauge {
                 if topic != src_topic {
                     return;
                 }
-                debug!(
-                    "SubGauge::on() topic: {} vs src_topic : {}",
-                    topic, src_topic
-                );
                 self.eval_expr.as_ref().map(|n| {
                     let mut context = HashMapContext::new();
                     context
@@ -162,8 +169,8 @@ impl PubSubWidget for SubGauge {
                         .unwrap();
                 });
                 let _ = message.parse::<f64>().map(|f| {
-                    debug!("SubGauge::on() f : {}", f);
-                    *self.value.borrow_mut() = (f / 1000.) % 100.;
+                    info!("SubGauge:{}={}", src_topic,f);
+                    *self.value.borrow_mut() = f;
                 });
                 self.last_update = std::time::SystemTime::now();
                 let text = format!("{}{}{}", src_prefix, message, src_suffix);
