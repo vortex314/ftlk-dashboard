@@ -94,8 +94,8 @@ impl SubPlot {
         let w = self.frame.w();
         let h = self.frame.h();
         let x_range = -(self.widget_params.src_timespan.unwrap_or(60) as f64) ;
-        let y_range = self.widget_params.y_range.clone();
-        let y_range = y_range.unwrap_or(vec!(0.0,1.0));
+        let y_range = self.widget_params.src_range.clone();
+        let (y_min,y_max) = y_range.unwrap_or((0.0,1.0));
         let mut buf = vec![0u8; (w * h * 3) as usize];
         {
             let drawing_area =
@@ -106,7 +106,7 @@ impl SubPlot {
             let mut chart_context = ChartBuilder::on(&drawing_area)
                 .margin(10)
                 .set_all_label_area_size(30)
-                .build_cartesian_2d(x_range .. 0.0, y_range[0]..y_range[1])
+                .build_cartesian_2d(x_range .. 0.0, y_min..y_max)
                 .unwrap();
 
             chart_context

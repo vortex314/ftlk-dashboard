@@ -13,9 +13,9 @@ widgets:
     pos: [8,8]
     size: [12,12]
     src_topic: "test"
+    src_range: [-1.,1.]
     samples_timespan_sec: 60
     samples_max_count: 1000
-    y_range: [-1.,1.]
   - widget: SubStatus
     label: "USB-serial"
     pos: [6,1]

@@ -48,7 +48,7 @@ impl SubGauge {
             .with_align(Align::Bottom);
         grp.end();
         grp.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
-        let mut sub_gauge = SubGauge {
+        SubGauge {
             grp,
             frame,
             value: Rc::from(RefCell::from(50.)),
@@ -56,36 +56,38 @@ impl SubGauge {
             eval_expr: None,
             widget_params: WidgetParams::new(),
             ctx: Context::new(),
-        };
-        let value_c = sub_gauge.value.clone();
-        sub_gauge.frame.draw(move |w| {
-            let (min,max) = sub_gauge.widget_params.src_range.unwrap_or((0., 100.));
-            let value = clap(*value_c.borrow(),min,max);
-            let angle = ((max - value)/(max-min)) * 270. - 45.;
-            draw::set_draw_hex_color(0xe0e0e0);
-            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
-            draw::set_draw_hex_color(0x0000ff);
-            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), angle, 225.);
-            draw::set_draw_hex_color(0xa0a0a0);
-            draw::draw_pie(
-                w.x() + w.w() / 10,
-                w.y() + w.h() / 10,
-                w.w() * 8 / 10,
-                w.h() * 8 / 10,
-                0.,
-                360.,
-            );
-            let (x1, y1) = (w.x() + w.w() / 2, w.y() + w.h() / 2);
-            let x2 = x1 as f64 + (w.w() / 2 - 10) as f64 * angle.to_radians().cos();
-            let y2 = y1 as f64 - (w.h() / 2 - 10) as f64 * angle.to_radians().sin();
-            draw::set_draw_hex_color(0x000000);
-            draw::set_line_style(LineStyle::Solid, 5);
-            draw::draw_line(x1, y1, x2 as i32, y2 as i32);
-            let s = format!("{:.1}", value);
-            w.set_label(s.as_str());
-            //w.draw_children();
-        });
-        sub_gauge
+        }
+    }
+
+    fn draw(&mut self) {
+        let value_c = self.value.clone();
+        let (min,max) = self.widget_params.src_range.unwrap_or((0.,100.));
+        let value = clap(*value_c.borrow(),min,max);
+        let angle = (1. - (value-min)/(max-min)) * 270. - 45.;
+        let w = &mut self.frame;
+        info!("SubGauge::draw() w={},{},{},{}", w.x(),w.y(),w.w(),w.h());
+        draw::set_draw_hex_color(0xe0e0e0);
+        draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
+        draw::set_draw_hex_color(0x0000ff);
+        draw::draw_pie(w.x(), w.y(), w.w(), w.h(), angle, 225.);
+        draw::set_draw_hex_color(0xa0a0a0);
+        draw::draw_pie(
+            w.x() + w.w() / 10,
+            w.y() + w.h() / 10,
+            w.w() * 8 / 10,
+            w.h() * 8 / 10,
+            0.,
+            360.,
+        );
+        let (x1, y1) = (w.x() + w.w() / 2, w.y() + w.h() / 2);
+        let x2 = x1 as f64 + (w.w() / 2 - 10) as f64 * angle.to_radians().cos();
+        let y2 = y1 as f64 - (w.h() / 2 - 10) as f64 * angle.to_radians().sin();
+        draw::set_draw_hex_color(0x000000);
+        draw::set_line_style(LineStyle::Solid, 5);
+        draw::draw_line(x1, y1, x2 as i32, y2 as i32);
+        let s = format!("{:.1}", value);
+        w.set_label(s.as_str());
+
     }
 
     fn reconfigure(&mut self) {
@@ -114,6 +116,7 @@ impl SubGauge {
             .src_eval
             .as_ref()
             .map(|expr| build_operator_tree(expr.as_str()).map(|x| self.eval_expr = Some(x)));
+        self.draw();
     }
 }
 
@@ -176,7 +179,7 @@ impl PubSubWidget for SubGauge {
                 let text = format!("{}{}{}", src_prefix, message, src_suffix);
                 self.frame.set_label(&text);
                 self.frame.set_color(Color::from_hex(0x00ff00));
-                self.frame.redraw();
+                self.draw();
             }
             PubSubEvent::Timer1sec => {
                 let delta = std::time::SystemTime::now()

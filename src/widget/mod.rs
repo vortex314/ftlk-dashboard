@@ -64,8 +64,6 @@ pub struct WidgetParams {
     samples_timespan_sec: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     samples_max_count: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    y_range: Option<Vec<f64>>,
 }
 // get WidgetParams from yaml value
 
@@ -94,7 +92,6 @@ impl WidgetParams {
             dst_format: None,
             samples_timespan_sec: None,
             samples_max_count: None,
-            y_range: None,
         }
     }
     pub fn from_value(v: Value) -> Option<WidgetParams> {
@@ -147,9 +144,9 @@ impl Context {
             grid_height: 32,
             screen_width: 1024,
             screen_height: 768,
-            background_color: enums::Color::from_hex(0x2a2a2a),
+            background_color: enums::Color::White,
             font_color: enums::Color::Black,
-            valuator_color: enums::Color::Blue,
+            valuator_color: enums::Color::Green,
             theme: None,
             publish_channel: None,
         }
