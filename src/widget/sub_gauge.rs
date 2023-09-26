@@ -46,6 +46,8 @@ impl SubGauge {
         let mut frame = frame::Frame::default()
             .with_label("50%")
             .with_align(Align::Bottom);
+        frame.set_frame(FrameType::BorderBox);
+        frame.set_color(Color::White);
         grp.end();
         grp.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
         SubGauge {
@@ -60,33 +62,35 @@ impl SubGauge {
     }
 
     fn draw(&mut self) {
-        let value_c = self.value.clone();
         let (min,max) = self.widget_params.src_range.unwrap_or((0.,100.));
-        let value = clap(*value_c.borrow(),min,max);
+        let value = clap(*self.value.borrow(),min,max);
         let angle = (1. - (value-min)/(max-min)) * 270. - 45.;
         let w = &mut self.frame;
-        info!("SubGauge::draw() w={},{},{},{}", w.x(),w.y(),w.w(),w.h());
-        draw::set_draw_hex_color(0xe0e0e0);
-        draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
-        draw::set_draw_hex_color(0x0000ff);
-        draw::draw_pie(w.x(), w.y(), w.w(), w.h(), angle, 225.);
-        draw::set_draw_hex_color(0xa0a0a0);
-        draw::draw_pie(
-            w.x() + w.w() / 10,
-            w.y() + w.h() / 10,
-            w.w() * 8 / 10,
-            w.h() * 8 / 10,
-            0.,
-            360.,
-        );
-        let (x1, y1) = (w.x() + w.w() / 2, w.y() + w.h() / 2);
-        let x2 = x1 as f64 + (w.w() / 2 - 10) as f64 * angle.to_radians().cos();
-        let y2 = y1 as f64 - (w.h() / 2 - 10) as f64 * angle.to_radians().sin();
-        draw::set_draw_hex_color(0x000000);
-        draw::set_line_style(LineStyle::Solid, 5);
-        draw::draw_line(x1, y1, x2 as i32, y2 as i32);
-        let s = format!("{:.1}", value);
-        w.set_label(s.as_str());
+        w.draw(move|w| {
+            info!("SubGauge::draw() w={},{},{},{}", w.x(),w.y(),w.w(),w.h());
+            draw::set_draw_color(Color::Black);
+            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
+            draw::set_draw_color(Color::Green);
+            draw::draw_pie(w.x(), w.y(), w.w(), w.h(), angle, 225.);
+            draw::set_draw_color(Color::White);
+            draw::draw_pie(
+                w.x() + w.w() / 10,
+                w.y() + w.h() / 10,
+                w.w() * 8 / 10,
+                w.h() * 8 / 10,
+                0.,
+                360.,
+            );
+            let (center_x, center_y) = (w.x() + w.w() / 2, w.y() + w.h() / 2);
+            let x2 = center_x as f64 + (w.w() / 2 - 10) as f64 * angle.to_radians().cos();
+            let y2 = center_y as f64 - (w.h() / 2 - 10) as f64 * angle.to_radians().sin();
+            draw::set_draw_color(Color::Black);
+            draw::set_line_style(LineStyle::Solid, 3);
+            draw::draw_line(center_x, center_y, x2 as i32, y2 as i32);
+        });
+
+        w.redraw();
+        w.show();
 
     }
 
@@ -176,9 +180,12 @@ impl PubSubWidget for SubGauge {
                     *self.value.borrow_mut() = f;
                 });
                 self.last_update = std::time::SystemTime::now();
-                let text = format!("{}{}{}", src_prefix, message, src_suffix);
+                let _ = message.parse::<f64>().map(|f| {
+                    info!("SubGauge:{}={}", src_topic,f);
+                    *self.value.borrow_mut() = f;
+                });
+                let text = format!("{}{:.1}{}", src_prefix, *self.value.borrow(), src_suffix);
                 self.frame.set_label(&text);
-                self.frame.set_color(Color::from_hex(0x00ff00));
                 self.draw();
             }
             PubSubEvent::Timer1sec => {
@@ -188,8 +195,8 @@ impl PubSubWidget for SubGauge {
                     .as_millis();
                 if delta > self.widget_params.src_timeout.unwrap() as u128 {
                     debug!("Status::on() {} Expired", src_topic);
-                    self.frame.set_color(Color::from_hex(0xff0000));
-                    self.frame.redraw();
+                    self.frame.set_color(Color::from_hex(0x606060));
+                    self.draw();
                 }
             }
         }

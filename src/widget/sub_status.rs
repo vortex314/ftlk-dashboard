@@ -20,7 +20,7 @@ use super::WidgetParams;
 
 #[derive(Debug, Clone)]
 pub struct SubStatus {
-    status_frame: frame::Frame,
+    frame: frame::Frame,
     last_update: SystemTime,
     widget_params: WidgetParams,
     alive: bool,
@@ -29,12 +29,12 @@ pub struct SubStatus {
 
 impl SubStatus {
     pub fn new() -> SubStatus {
-        let mut status_frame = frame::Frame::default().with_label("Status");
-        status_frame.set_frame(FrameType::BorderBox);
-        status_frame.set_color(Color::from_u32(0xff0000));
-        status_frame.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
+        let mut frame = frame::Frame::default().with_label("Status");
+        frame.set_frame(FrameType::BorderBox);
+        frame.set_color(Color::from_u32(0xff0000));
+        frame.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
         SubStatus {
-            status_frame,
+            frame: frame,
             last_update: std::time::UNIX_EPOCH,
             alive: false,
             widget_params: WidgetParams::new(),
@@ -46,7 +46,7 @@ impl SubStatus {
         info!("Status::topic {:?}", self.widget_params.src_topic.clone().unwrap_or("".into()));
         if let Some(size) = self.widget_params.size {
             if let Some(pos) = self.widget_params.pos {
-                self.status_frame.resize(
+                self.frame.resize(
                     pos.0 * self.ctx.grid_width,
                     pos.1 * self.ctx.grid_height,
                     size.0 * self.ctx.grid_width,
@@ -57,7 +57,7 @@ impl SubStatus {
         self.widget_params
             .label
             .as_ref()
-            .map(|s| self.status_frame.set_label(s.as_str()));
+            .map(|s| self.frame.set_label(s.as_str()));
     }
 }
 
@@ -123,8 +123,8 @@ impl PubSubWidget for SubStatus {
                     if !self.alive {
                         debug!("Status::on() {} Alive", src_topic);
                         self.alive = true;
-                        self.status_frame.set_color(Color::from_hex(0x00ff00));
-                        self.status_frame.parent().unwrap().redraw();
+                        self.frame.set_color(Color::from_hex(0x00ff00));
+                        self.frame.parent().unwrap().redraw();
                     }
                 }
             }
@@ -137,8 +137,8 @@ impl PubSubWidget for SubStatus {
                     if self.alive {
                         debug!("Status::on() {} Expired", src_topic);
                         self.alive = false;
-                        self.status_frame.set_color(Color::from_hex(0xff0000));
-                        self.status_frame.parent().unwrap().redraw();
+                        self.frame.set_color(Color::from_hex(0xff0000));
+                        self.frame.parent().unwrap().redraw();
                     }
                 }
             }

@@ -44,7 +44,7 @@ widgets:
     src_eval: "hms(msg_i64)"
   - widget: SubGauge
     pos: [14,2]
-    size: [6,6]
+    size: [10,10]
     label: "Latency"
     src_topic: "test"
     src_prefix: ""
