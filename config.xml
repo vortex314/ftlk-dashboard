@@ -1,0 +1,14 @@
+<Dashboard label="Prototype Dashboard" h="768" w="1024" url="redis://limero.ddns.net:6379"
+    xmlns="./config.xsd" theme="light">
+    <Col>
+        <Row h="200">
+            <Label w="70" h="50"  label="All" src="src/esp32/sys/latency" />
+            <Table w="600" h="200" src=".*" label="ESP32" timeout="10000" />
+            <Gauge src="src/esp32/sys/latency" label="msec" timeout="10000" w="150" min="0" max="10" />
+        </Row>
+        <Row h="270">
+            <Progress  w="20" h="270" label="Voltage" unit="msec" src="src/esp32/sys/latency" min="0.0" max="5.0" />
+            <Plot  label="Latency" unit="V" src="src/esp32/sys/latency" min="0.0" max="10.0" timespan="1000000" samples="10000"/>
+        </Row>
+    </Col>
+</Dashboard>
