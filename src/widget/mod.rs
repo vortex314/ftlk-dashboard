@@ -14,10 +14,12 @@ use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 pub mod gauge;
-pub mod sub_gauge;
+pub mod sub_gauge ;
 pub mod sub_plot;
 pub mod sub_status;
 pub mod sub_text;
+
+pub use sub_gauge::SubGauge as SubGauge;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WidgetParams {

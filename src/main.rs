@@ -66,6 +66,7 @@ use widget::sub_text::SubText;
 use widget::sub_plot::SubPlot;
 use widget::*;
 use widget::{PubSubWidget, WidgetParams};
+mod limero;
 
 use rand::random;
 
@@ -90,7 +91,7 @@ fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y: i3
     false
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 1)]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     env::set_var("RUST_LOG", "info");
     init_logger();

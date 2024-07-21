@@ -3,7 +3,6 @@ use serde_yaml::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
 use crate::widget::{PubSubWidget, WidgetParams,Context};
 use tokio::sync::mpsc;

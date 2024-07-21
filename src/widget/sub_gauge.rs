@@ -1,3 +1,4 @@
+use draw::Rect;
 use fltk::button::Button;
 use fltk::draw::LineStyle;
 use fltk::enums::Color;
@@ -14,6 +15,7 @@ use crate::pubsub::PubSubEvent;
 use crate::widget::GridRectangle;
 use crate::widget::{dnd_callback, hms};
 use crate::widget::{Context, PubSubWidget, WidgetParams};
+use crate::config::file_xml::Tag; 
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
@@ -23,7 +25,7 @@ use evalexpr::*;
 pub struct SubGauge {
     grp: group::Group,
     frame: frame::Frame,
-    value: Rc<RefCell<f64>>,
+    value: f64,
     last_update: SystemTime,
     eval_expr: Option<Node>,
     widget_params: WidgetParams,
@@ -41,10 +43,11 @@ fn clap(x:f64,min:f64,max:f64) -> f64 {
 }
 
 impl SubGauge {
-    pub fn new() -> Self {
+    pub fn new(rect:Rect,cfg:&Tag) -> Self {
         let mut grp = group::Group::default().with_align(Align::Top);
         let mut frame = frame::Frame::default()
             .with_label("50%")
+            .with_rect(rect.x,rect.y,rect.w,rect.h)
             .with_align(Align::Bottom);
         frame.set_frame(FrameType::BorderBox);
         frame.set_color(Color::White);
@@ -53,7 +56,7 @@ impl SubGauge {
         SubGauge {
             grp,
             frame,
-            value: Rc::from(RefCell::from(50.)),
+            value: 0.0,
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
             widget_params: WidgetParams::new(),
@@ -63,7 +66,7 @@ impl SubGauge {
 
     fn draw(&mut self) {
         let (min,max) = self.widget_params.src_range.unwrap_or((0.,100.));
-        let value = clap(*self.value.borrow(),min,max);
+        let value = clap(self.value,min,max);
         let angle = (1. - (value-min)/(max-min)) * 270. - 45.;
         let w = &mut self.frame;
         w.draw(move|w| {
@@ -191,20 +194,20 @@ impl PubSubWidget for SubGauge {
                     n.eval_with_context(&context)
                         .map(|x| {
                             debug!("SubGauge::on() eval_expr : {}", x);
-                            *self.value.borrow_mut() = x.as_float().unwrap();
+                            self.value = x.as_float().unwrap();
                         })
                         .unwrap();
                 });
                 let _ = message.parse::<f64>().map(|f| {
                     info!("SubGauge:{}={}", src_topic,f);
-                    *self.value.borrow_mut() = f;
+                    self.value = f;
                 });
                 self.last_update = std::time::SystemTime::now();
                 let _ = message.parse::<f64>().map(|f| {
                     info!("SubGauge:{}={}", src_topic,f);
-                    *self.value.borrow_mut() = f;
+                    self.value = f;
                 });
-                let text = format!("{}{:.1}{}", src_prefix, *self.value.borrow(), src_suffix);
+                let text = format!("{}{:.1}{}", src_prefix, self.value, src_suffix);
                 self.frame.set_label(&text);
                 self.draw();
             }

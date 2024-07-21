@@ -27,7 +27,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 
-use crate::decl::DeclWidget;
 use crate::pubsub::PubSubEvent;
 use crate::widget::dnd_callback;
 use crate::widget::hms;

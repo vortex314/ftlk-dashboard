@@ -5,24 +5,27 @@ edition = "2021"
 
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.38.1", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["full"] }
-fltk = { version = "*", features = [] }
-fltk-grid = "0.3.1"
-fltk-table = "0.3.0"
+fltk = { version = "1.4.32", features = [] }
+fltk-grid = "0.4.0"
+fltk-table = "0.3.1"
 fltk-theme = "0.7"
 regex = "*"
 serde = "1.0.163" # for a turtle description
 serde_yaml = "0.9.25" # for a yaml description
+serde-xml-rs = { version="0.6.0" }
 log = "*" # for logging
 simplelog = "0.12.1" # for logging
 env_logger = "0.10.0"
 redis = { git = "https://github.com/redis-rs/redis-rs", branch = "resp3",features = ["tokio-comp"] }
-chrono = "0.4.19" # for time
+chrono = "0.4.38" # for time
 mqtt-async-client = "0.3.1" # for mqtt
 notify = "6.1.1"
 serde_derive = "1"
 evalexpr="*"
 rand="*"
-plotters = "0.3.0"
-plotters-bitmap = "0.3.0"
+plotters = "0.3.6"
+plotters-bitmap = "0.3.6"
+minidom="*"
+minicbor = { version = "0.24.2", features=["derive","alloc","half"] }
