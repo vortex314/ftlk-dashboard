@@ -94,6 +94,26 @@ impl SubGauge {
 
     }
 
+    fn get_major_minor_ticks(min:f64,max:f64) -> (Vec<f64>,Vec<f64>) {
+        let mut major_ticks = Vec::new();
+        let mut minor_ticks = Vec::new();
+        let delta = (max - min).abs();
+        let major = 10.0_f64.powf(delta.log10().floor());
+        let minor = major/10.;
+
+        let mut x = min;
+        while x < max {
+            major_ticks.push(x);
+            x += major;
+        }
+        x = min;
+        while x < max {
+            minor_ticks.push(x);
+            x += minor;
+        }
+        (major_ticks,minor_ticks)
+    }
+
     fn reconfigure(&mut self) {
         info!("SubGauge::topic {:?}", self.widget_params.src_topic.clone().unwrap_or("".into()));
         if let Some(size) = self.widget_params.size {
