@@ -106,7 +106,7 @@ async fn main() -> Result<(),MyError<'static> >{
 
     let mut entry_list = EntryList::new();
 
-    let mut tab = Tabs::new(0, 0, context.screen_width, context.screen_height, "");
+    let mut tab = Tabs::new(0, 0, context.screen_width, context.screen_height, None);
 
     let grp_table = group::Group::new(20, 20, context.screen_width - 20, context.screen_height - 20, "Table");
     let mut table = SmartTable::default()
@@ -155,10 +155,12 @@ async fn main() -> Result<(),MyError<'static> >{
         });
         for widget_params in widgets {
             let widget_type = widget_params.name.as_str();
+            info!("Loading widget {}", widget_type);
             match widget_type {
 
                 "SubGauge" => {
                     let mut widget = SubGauge::new(&widget_params);
+                    widget.draw();
                 }
                 _ => {
                     warn!("Unknown widget type {}", widget_type);

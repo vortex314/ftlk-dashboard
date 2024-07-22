@@ -4,6 +4,7 @@ use fltk::draw::LineStyle;
 use fltk::enums::Color;
 use fltk::widget::Widget;
 use fltk::{enums::*, prelude::*, *};
+use fltk_theme::colors::aqua::dark::windowFrameTextColor;
 use serde_yaml::Value;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -22,8 +23,6 @@ use evalexpr::*;
 
 #[derive(Debug, Clone)]
 pub struct SubGauge {
-    grp: group::Group,
-    frame: frame::Frame,
     value: f64,
     last_update: SystemTime,
     eval_expr: Option<Node>,
@@ -43,15 +42,9 @@ fn clap(x:f64,min:f64,max:f64) -> f64 {
 
 impl SubGauge {
     pub fn new(cfg:&WidgetParams) -> Self {
-        let mut grp = group::Group::default().with_align(Align::Top);
-        let mut frame = frame::Frame::new(cfg.rect.x,cfg.rect.y,cfg.rect.w,cfg.rect.h,None);
-        frame.set_frame(FrameType::BorderBox);
-        frame.set_color(Color::White);
-        grp.end();
+
  //       grp.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
         SubGauge {
-            grp,
-            frame,
             value: 0.0,
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
@@ -60,13 +53,18 @@ impl SubGauge {
         }
     }
 
-    fn draw(&mut self) {
+    pub fn draw(&mut self) {
+        let cfg = &self.widget_params;
+        let mut grp = group::Group::default().with_align(Align::Top);
+        let mut frame = frame::Frame::new(cfg.rect.x,cfg.rect.y,cfg.rect.w,cfg.rect.h,None);
+        frame.set_frame(FrameType::BorderBox);
+        frame.set_color(Color::White);
+
         let min = self.widget_params.min.unwrap_or(0.);
         let max = self.widget_params.max.unwrap_or(100.);
         let value = clap(self.value,min,max);
         let angle = (1. - (value-min)/(max-min)) * 270. - 45.;
-        let w = &mut self.frame;
-        w.draw(move|w| {
+        frame.draw(move|w| {
             info!("SubGauge::draw() w={},{},{},{}", w.x(),w.y(),w.w(),w.h());
             draw::set_draw_color(Color::Black);
             draw::draw_pie(w.x(), w.y(), w.w(), w.h(), -45., 225.); // total angle 270
@@ -89,8 +87,9 @@ impl SubGauge {
             draw::draw_line(center_x, center_y, x2 as i32, y2 as i32);
         });
 
-        w.redraw();
-        w.show();
+        frame.redraw();
+        frame.show();
+        grp.end();
 
     }
 
