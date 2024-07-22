@@ -1,11 +1,11 @@
-<Config>
+<Config xmlns="">
     <PubSub>
         <Mqtt host="pcthink.local" port="1883" />
         <Redis host="limero.ddns.net" port="6379" />
         <Zenoh host="limero.ddns.net" port="7447" />
     </PubSub>
     <Dashboard w="1024" h="768" label="Prototype Dashboard" theme="light">
-        <Col>
+        <Col w="800">
             <Row h="200">
                 <Label w="70" h="50" label="All" src="src/esp32/sys/latency" />
                 <Table w="600" h="200" label="ESP32" src=".*" timeout="10000" />

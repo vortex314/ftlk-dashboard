@@ -3,6 +3,7 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
+use config::file_xml::{get_widget_params, load_dashboard, load_xml_file};
 use fltk::valuator::Dial;
 use minidom::Element;
 use regex::Regex;
@@ -25,6 +26,7 @@ use fltk::misc::Progress;
 use fltk::widget::Widget;
 use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
+use fltk::draw::Rect;
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
 use fltk_theme::{
@@ -53,7 +55,6 @@ use tokio::time::{self, Duration};
 use tokio_stream::StreamExt;
 
 mod config;
-mod decl;
 mod logger;
 mod pubsub;
 mod store;
@@ -62,56 +63,44 @@ use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
-use widget::sub_status::SubStatus;
-use widget::sub_text::SubText;
-use widget::sub_plot::SubPlot;
+
 use widget::*;
-use widget::{PubSubWidget, WidgetParams};
 mod limero;
 
 use rand::random;
 
-const PATH: &str = "src/config.yaml";
 
-use decl::DeclWidget;
-use decl::DeclarativeApp;
-
-fn load_fn(path: &'static str) -> Option<DeclWidget> {
-    let s = std::fs::read_to_string(path).ok()?;
-    // We want to see the serde error on the command line while we're developing
-    serde_yaml::from_str(&s).map_err(|e| eprintln!("{e}")).ok()
+#[derive(Debug)]
+enum MyError<'a> {
+    Io(std::io::Error),
+    Xml(minidom::Error),
+    Yaml(serde_yaml::Error),
+    Str(&'a str),
+    String(String),
 }
 
-fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y: i32) -> bool {
-    let x1 = w.x();
-    let y1 = w.y();
-    if x1 % inc_x != new_x % inc_x || y1 % inc_y != new_y % inc_y {
-        w.set_pos((new_x / inc_x) * inc_x, (new_y / inc_y) * inc_y);
-        return true;
-    }
-    false
-}
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(),MyError<'static> >{
     env::set_var("RUST_LOG", "info");
     init_logger();
-    info!("Starting up. Reading config file {}.", PATH);
+    info!("Starting up. Reading config file .");
 
-    let root_config:Element = load_xml_file("src/config.xml")?;
-    let pubsub_config:Element = root_config.get_child("PubSub","")?;
-    let dashboard_config:Element = root_config.get_child("dashboDashboardard","")?;
-    let widgets:Vec<PubSubWidget> = load_widgets(&dashboard_config)?;
-    let context = Context::new(&dashboard_config);
-
+    let root_config = load_xml_file("./config.xml").map_err(MyError::Xml)?;
+    let pubsub_config = root_config.get_child("PubSub","").ok_or(MyError::Str("PubSub section not found"))?;
+    let dashboard_config = root_config.get_child("Dashboard","").ok_or(MyError::Str("Dashboard section not found"))?;
+    let widgets = load_dashboard(&dashboard_config).map_err(MyError::String)?;
+    let mut context = Context::new();
+    let window_params = get_widget_params(Rect::new(0,0,0,0),&root_config).map_err(MyError::String)?;
+    let window_rect = Rect::new(0, 0, window_params.width.unwrap_or(1024), window_params.height.unwrap_or(768));
+    context.screen_width = window_params.width.unwrap_or(1024);
+    context.screen_height = window_params.height.unwrap_or(768);
 
     info!("Starting up fltk");
-    /*     DeclarativeApp::new(1024, 768, "MyApp", "src/config.yaml", load_fn)
-    .run(|_| {})
-    .unwrap();*/
+
     let mut _app = App::default().with_scheme(AppScheme::Oxy);
     let mut win = window::Window::default()
-        .with_size(context.screen_width, context.screen_height)
+        .with_size(window_params.width.unwrap_or(1024), window_params.height.unwrap_or(768))
         .with_label("FLTK dashboard");
     win.make_resizable(true);
 
@@ -156,111 +145,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     {
         let mut button = Button::new(20, 20, 32, 32, "@filesave");
-        let wrc2 = wrc.clone();
         button.handle(move |b, ev| {
             if ev == Event::Push {
                 info!("Save config");
-                let mut file = File::create("test.yaml").unwrap();
-                let mut s = String::new();
-                let mut widgets_value = Value::Sequence(Vec::new());
-                let mut map_all = BTreeMap::new();
-
-                for widget in wrc2.borrow().iter() {
-                    let param = widget.borrow().get_config().unwrap();
-                    let param_value = serde_yaml::to_value(param).unwrap();
-                    widgets_value.as_sequence_mut().unwrap().push(param_value);
-                }
-                map_all.insert("widgets".to_string(), widgets_value);
-                let cfg = serde_yaml::to_string(&map_all).unwrap().to_string();
-                s.push_str(&cfg);
-                file.write_all(s.as_bytes()).unwrap();
                 true
             } else {
                 false
             }
         });
-        let wrc1 = wrc.clone();
-        widgets_config
-            .as_sequence()
-            .unwrap()
-            .iter()
-            .for_each(move |m| {
-                let widget_type = m["widget"].as_str().unwrap();
-                let wiget_par = serde_yaml::to_string(&m).unwrap().to_string();
-                match widget_type {
-                    "SubPlot" => {
-                        let mut widget = SubPlot::new();
-                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
-                        widget.set_context(context.clone());
-                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                    }
-                    "SubText" => {
-                        let mut widget = SubText::new();
-                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
-                        widget.set_context(context.clone());
-                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                    }
-                    "SubStatus" => {
-                        let mut widget = SubStatus::new();
-                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
-                        widget.set_context(context.clone());
-                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                    }
-                    "SubGauge" => {
-                        let mut widget = SubGauge::new();
-                        WidgetParams::from_value(m.clone()).map(|p| widget.set_config(p));
-                        widget.set_context(context.clone());
-                        wrc1.borrow_mut().push(Rc::new(RefCell::new(widget)));
-                    }
-                    _ => {
-                        warn!("Unknown widget type {}", widget_type);
-                    }
-                };
-            });
+        for widget_params in widgets {
+            let widget_type = widget_params.name.as_str();
+            match widget_type {
+
+                "SubGauge" => {
+                    let mut widget = SubGauge::new(&widget_params);
+                }
+                _ => {
+                    warn!("Unknown widget type {}", widget_type);
+                }
+            };
+        }
+        
     }
     //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
     grp_dashboard.end();
     tab.end();
     win.end();
     win.show();
-    let sub = rx_publish.resubscribe();
-    let mut widgets_rc = wrc.clone();
+
     app::add_timeout3(1.0, move |_x| {
         debug!("add_timeout3");
-        widgets_rc.borrow().iter().for_each(|w| {
-            w.borrow_mut().on(PubSubEvent::Timer1sec);
-            let y: f64 = random();
-            w.borrow_mut().on(PubSubEvent::Publish {
-                topic: "test".to_string(),
-                message: y.to_string(),
-            });
-        });
         app::repeat_timeout3(1.0, _x);
     });
     while _app.wait() {
-        let mut received = false;
-        let widgets_rc2 = wrc.clone();
-        while let Ok(x) = rx_publish.try_recv() {
-            match x {
-                PubSubEvent::Publish { topic, message } => {
-                    entry_list.add(topic.clone(), message.clone());
-                    received = true;
-                    widgets_rc2.borrow().iter().for_each(|w| {
-                        w.borrow_mut().on(PubSubEvent::Publish {
-                            topic: topic.clone(),
-                            message: message.clone(),
-                        });
-                    });
-                }
-                PubSubEvent::Timer1sec => {
-                    info!("Timer1sec");
-                    widgets_rc2.borrow().iter().for_each(|w| {
-                        w.borrow_mut().on(PubSubEvent::Timer1sec);
-                    });
-                }
-            }
-        }
-        if received {
+
+        if true {
             let entry_count = entry_list.entries.len();
             let mut row = 0;
             // table.clear();
@@ -283,6 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             awake();
         }
     }
+    Ok(())
 }
 
 // async channel receiver

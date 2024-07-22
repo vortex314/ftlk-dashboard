@@ -12,9 +12,8 @@ use std::time::Instant;
 use std::time::SystemTime;
 
 use crate::pubsub::PubSubEvent;
-use crate::widget::GridRectangle;
-use crate::widget::{dnd_callback, hms};
-use crate::widget::{Context, PubSubWidget, WidgetParams};
+use crate::widget:: hms;
+use crate::widget::Context;
 use crate::config::file_xml::WidgetParams; 
 use tokio::sync::mpsc;
 
@@ -43,29 +42,27 @@ fn clap(x:f64,min:f64,max:f64) -> f64 {
 }
 
 impl SubGauge {
-    pub fn new(rect:Rect,cfg:&WidgetParams) -> Self {
+    pub fn new(cfg:&WidgetParams) -> Self {
         let mut grp = group::Group::default().with_align(Align::Top);
-        let mut frame = frame::Frame::default()
-            .with_label("50%")
-            .with_rect(rect.x,rect.y,rect.w,rect.h)
-            .with_align(Align::Bottom);
+        let mut frame = frame::Frame::new(cfg.rect.x,cfg.rect.y,cfg.rect.w,cfg.rect.h,None);
         frame.set_frame(FrameType::BorderBox);
         frame.set_color(Color::White);
         grp.end();
-        grp.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
+ //       grp.handle(move |w, ev| dnd_callback(&mut w.as_base_widget(), ev));
         SubGauge {
             grp,
             frame,
             value: 0.0,
             last_update: std::time::UNIX_EPOCH,
             eval_expr: None,
-            widget_params: WidgetParams::new(),
+            widget_params: cfg.clone(),
             ctx: Context::new(),
         }
     }
 
     fn draw(&mut self) {
-        let (min,max) = self.widget_params.src_range.unwrap_or((0.,100.));
+        let min = self.widget_params.min.unwrap_or(0.);
+        let max = self.widget_params.max.unwrap_or(100.);
         let value = clap(self.value,min,max);
         let angle = (1. - (value-min)/(max-min)) * 270. - 45.;
         let w = &mut self.frame;
@@ -117,114 +114,7 @@ impl SubGauge {
         (major_ticks,minor_ticks)
     }
 
-    fn reconfigure(&mut self) {
-        info!("SubGauge::topic {:?}", self.widget_params.src_topic.clone().unwrap_or("".into()));
-        if let Some(size) = self.widget_params.size {
-            if let Some(pos) = self.widget_params.pos {
-                self.grp.resize(
-                    pos.0 * self.ctx.grid_width,
-                    pos.1 * self.ctx.grid_height,
-                    size.0 * self.ctx.grid_width,
-                    size.1 * self.ctx.grid_height,
-                );
-                self.frame.resize(
-                    pos.0 * self.ctx.grid_width,
-                    pos.1 * self.ctx.grid_height,
-                    size.0 * self.ctx.grid_width,
-                    size.1 * self.ctx.grid_height,
-                );
-            }
-        }
-        self.widget_params
-            .label
-            .as_ref()
-            .map(|s| self.frame.set_label(s.as_str()));
-        self.widget_params
-            .src_eval
-            .as_ref()
-            .map(|expr| build_operator_tree(expr.as_str()).map(|x| self.eval_expr = Some(x)));
-        self.draw();
-    }
+    
 }
 
-impl PubSubWidget for SubGauge {
-    fn set_config(&mut self, props: WidgetParams) {
-        debug!("Status::config() {:?}", props);
-        self.widget_params = props;
-        self.reconfigure();
-    }
 
-    fn set_context(&mut self, context: Context) {
-        self.ctx = context;
-    }
-
-    fn get_config(&self) -> Option<WidgetParams> {
-        Some(self.widget_params.clone())
-    }
-
-    fn on(&mut self, event: PubSubEvent) {
-        let src_topic = self.widget_params.src_topic.clone().unwrap_or("".into());
-        let src_prefix = self.widget_params.src_prefix.clone().unwrap_or("".into());
-        let src_suffix = self.widget_params.src_suffix.clone().unwrap_or("".into());
-        match event {
-            PubSubEvent::Publish { topic, message } => {
-                if topic != src_topic {
-                    return;
-                }
-                self.eval_expr.as_ref().map(|n| {
-                    let mut context = HashMapContext::new();
-                    context
-                        .set_value("msg_str".into(), message.clone().into())
-                        .unwrap();
-                    let _ = message.parse::<i64>().map(|i| {
-                        context.set_value("msg_i64".into(), i.into()).unwrap();
-                    });
-                    context
-                        .set_function(
-                            "hms".into(),
-                            Function::new(|argument| {
-                                if let Ok(int) = argument.as_int() {
-                                    Ok(V::String(hms(int as u64)))
-                                } else {
-                                    Err(EvalexprError::expected_number(argument.clone()))
-                                }
-                            }),
-                        )
-                        .unwrap();
-                    n.eval_with_context(&context)
-                        .map(|x| {
-                            debug!("SubGauge::on() eval_expr : {}", x);
-                            self.value = x.as_float().unwrap();
-                        })
-                        .unwrap();
-                });
-                let _ = message.parse::<f64>().map(|f| {
-                    info!("SubGauge:{}={}", src_topic,f);
-                    self.value = f;
-                });
-                self.last_update = std::time::SystemTime::now();
-                let _ = message.parse::<f64>().map(|f| {
-                    info!("SubGauge:{}={}", src_topic,f);
-                    self.value = f;
-                });
-                let text = format!("{}{:.1}{}", src_prefix, self.value, src_suffix);
-                self.frame.set_label(&text);
-                self.draw();
-            }
-            PubSubEvent::Timer1sec => {
-                let delta = std::time::SystemTime::now()
-                    .duration_since(self.last_update)
-                    .unwrap()
-                    .as_millis();
-                if delta > self.widget_params.src_timeout.unwrap() as u128 {
-                    debug!("Status::on() {} Expired", src_topic);
-                    self.frame.set_color(Color::from_hex(0x606060));
-                    self.draw();
-                }
-            }
-        }
-    }
-    fn set_publish_channel(&mut self, channel: tokio::sync::mpsc::Sender<PubSubEvent>) {
-        info!("Status::set_publish_channel()");
-    }
-}
