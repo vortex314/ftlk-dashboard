@@ -17,7 +17,7 @@ use std::thread;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use crate::config::file_xml::Tag;
+use crate::config::file_xml::WidgetParams;
 
 use crate::limero::SinkRef;
 use crate::widget::SubGauge;
@@ -27,13 +27,13 @@ use super::file_xml::load_xml_file;
 
 pub struct FileLoader {
     file_name: String,
-    config: Tag,
+    config: WidgetParams,
     widgets: Vec<Box<dyn PubSubWidget + Send>>,
 }
 
 impl FileLoader {
     pub fn new(file_name: &str) -> Self {
-        let config = Tag::new("Dashboard".to_string());
+        let config = WidgetParams::new("Dashboard".to_string());
         FileLoader {
             file_name: file_name.to_string(),
             config,
@@ -47,7 +47,7 @@ impl FileLoader {
         Ok(())
     }
 
-    fn load(&mut self, cfg: &Tag) -> Result<(), String> {
+    fn load(&mut self, cfg: &WidgetParams) -> Result<(), String> {
         if cfg.name != "Dashboard" {
             return Err("Invalid config file. Missing Dashboard tag.".to_string());
         }
@@ -68,7 +68,7 @@ impl FileLoader {
     }
 }
 
-fn load_widgets(rect: Rect, cfg: &Tag) -> Vec<Box<dyn PubSubWidget + Send>> {
+fn load_widgets(rect: Rect, cfg: &WidgetParams) -> Vec<Box<dyn PubSubWidget + Send>> {
     let mut widgets: Vec<Box<dyn PubSubWidget + Send>> = Vec::new();
     let mut rect = rect;
 

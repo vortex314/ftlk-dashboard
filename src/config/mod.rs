@@ -11,7 +11,7 @@ pub(crate) mod file_xml;
 use file_change::FileChange;
 use file_loader::FileLoader;
 use file_xml::load_xml_file;
-use file_xml::Tag;
+use file_xml::WidgetParams;
 
 
 

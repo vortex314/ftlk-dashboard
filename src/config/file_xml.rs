@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_xml_rs::from_str;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Tag {
+pub struct WidgetParams {
     pub name: String,
     pub label: Option<String>,
     pub height: Option<i32>,
@@ -34,84 +34,84 @@ pub struct Tag {
     pub image: Option<String>,
     pub on: Option<String>,
     pub off: Option<String>,
-    pub children: Vec<Tag>,
+    pub children: Vec<WidgetParams>,
     pub max_samples:Option<usize>,
     pub max_timespan:Option<i32>,
 }
 
-fn get_tag(element: &Element) -> Option<Tag> {
-    let mut tag = Tag::new(String::from(element.name()));
-    element.attrs().for_each(|attr| {
-        match attr.0 {
+fn get_tag(element: &Element) -> Result<WidgetParams,String> {
+    let mut tag = WidgetParams::new(String::from(element.name()));
+    element.attrs().for_each(|(attr_name,attr_value)| {
+        match attr_name {
             "label" => {
-                tag.label = Some(String::from(attr.1));
+                tag.label = Some(String::from(attr_value));
             },
             "src" => {
-                tag.src_topic = Some(String::from(attr.1));
+                tag.src_topic = Some(String::from(attr_value));
             },
             "dst" => {
-                tag.dst_topic = Some(String::from(attr.1));
+                tag.dst_topic = Some(String::from(attr_value));
             },
             "pressed" => {
-                tag.pressed = Some(String::from(attr.1));
+                tag.pressed = Some(String::from(attr_value));
             },
             "released" => {
-                tag.released = Some(String::from(attr.1));
+                tag.released = Some(String::from(attr_value));
             },
             "prefix" => {
-                tag.prefix = Some(String::from(attr.1));
+                tag.prefix = Some(String::from(attr_value));
             },
             "postfix" => {
-                tag.postfix = Some(String::from(attr.1));
+                tag.postfix = Some(String::from(attr_value));
             },
             "unit" => {
-                tag.unit = Some(String::from(attr.1));
+                tag.unit = Some(String::from(attr_value));
             },
             "image" => {
-                tag.image = Some(String::from(attr.1));
+                tag.image = Some(String::from(attr_value));
             },
             "url" => {
-                tag.url = Some(String::from(attr.1));
+                tag.url = Some(String::from(attr_value));
             },            "ok" => {
-                tag.ok = Some(String::from(attr.1));
+                tag.ok = Some(String::from(attr_value));
             },
             "nok" => {
-                tag.ko = Some(String::from(attr.1));
+                tag.ko = Some(String::from(attr_value));
             },
             "h" => {
-                tag.height = Some(FromStr::from_str(attr.1).unwrap());
+                tag.height = Some(FromStr::from_str(attr_value).unwrap());
             },
             "w" => {
-                tag.width = Some(FromStr::from_str(attr.1).unwrap());
+                tag.width = Some(FromStr::from_str(attr_value).unwrap());
             },
             "min" => {
-                tag.min = Some(FromStr::from_str(attr.1).unwrap());
+                tag.min = Some(FromStr::from_str(attr_value).unwrap());
             },
             "max" => {
-                tag.max = Some(FromStr::from_str(attr.1).unwrap());
+                tag.max = Some(FromStr::from_str(attr_value.unwrap());
             },
             "timeout" => {
-                tag.timeout = Some(FromStr::from_str(attr.1).unwrap());
+                tag.timeout = Some(FromStr::from_str(attr_value).unwrap());
             },
             "msec" => {
-                tag.msec = Some(FromStr::from_str(attr.1).unwrap());
+                tag.msec = Some(FromStr::from_str(attr_value).unwrap());
             },
             "on" => {
-                tag.on = Some(String::from(attr.1));
+                tag.on = Some(String::from(attr_value));
             },
             "off" => {
-                tag.off = Some(String::from(attr.1));
+                tag.off = Some(String::from(attr_value));
             },
             "text_size" => {
-                tag.text_size = Some(FromStr::from_str(attr.1).unwrap());
+                tag.text_size = Some(FromStr::from_str(attr_value).unwrap());
             },
             "samples" => {
-                tag.max_samples = Some(FromStr::from_str(attr.1).unwrap());
+                tag.max_samples = Some(FromStr::from_str(attr_value).unwrap());
             },
             "timespan" => {
-                tag.max_timespan = Some(FromStr::from_str(attr.1).unwrap());
+                tag.max_timespan = Some(FromStr::from_str(attr_value).unwrap());
             },
-            _ => { warn!("Unknown attribute: {}", attr.0);},
+            _ => { return Err(format!("Unknown attribute: {}", attr_value)); },
         }
     });
     element.children().for_each(|child| {
@@ -122,7 +122,7 @@ fn get_tag(element: &Element) -> Option<Tag> {
     Some(tag)
 }
 
-impl Tag {
+impl WidgetParams {
     pub fn new(name:String) -> Self {
         Self {
             name,
@@ -154,7 +154,7 @@ impl Tag {
     }
 }
 
-pub fn load_xml_file(path: &str) -> Option<Tag>{
+pub fn load_xml_file(path: &str) -> Option<WidgetParams>{
     let mut file = File::open(path).expect(std::format!("Unable to open file {} ", path).as_str());
     let mut contents = String::new();
     file.read_to_string(&mut contents)

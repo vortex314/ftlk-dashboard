@@ -4,6 +4,7 @@
 #![allow(unused_mut)]
 
 use fltk::valuator::Dial;
+use minidom::Element;
 use regex::Regex;
 
 #[macro_use]
@@ -92,55 +93,23 @@ fn grid_pos_change(w: &mut Widget, new_x: i32, new_y: i32, inc_x: i32, inc_y: i3
 }
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env::set_var("RUST_LOG", "info");
     init_logger();
     info!("Starting up. Reading config file {}.", PATH);
 
-    let config = Box::new(config::load_yaml_file(PATH));
-
-    let (mut tx_publish, mut rx_publish) = broadcast::channel::<PubSubEvent>(16);
-    let (mut tx_redis_cmd, mut rx_redis_cmd) = channel::<PubSubCmd>(16);
-    let mut context = Context::new();
-    let screen_resolution: Vec<i64> = config["screen"]["resolution"]
-        .as_sequence()
-        .unwrap()
-        .iter()
-        .map(|x| x.as_i64().unwrap_or(400))
-        .collect();
-    let grid: Vec<i64> = config["screen"]["grid"]
-    .as_sequence()
-    .unwrap()
-    .iter()
-    .map(|x| x.as_i64().unwrap_or(32))
-    .collect();
-
-    context.screen_width = screen_resolution[0] as i32;
-    context.screen_height = screen_resolution[1] as i32;
-    context.grid_width = grid[0] as i32;
-    context.grid_height = grid[1] as i32;
+    let root_config:Element = load_xml_file("src/config.xml")?;
+    let pubsub_config:Element = root_config.get_child("PubSub","")?;
+    let dashboard_config:Element = root_config.get_child("dashboDashboardard","")?;
+    let widgets:Vec<PubSubWidget> = load_widgets(&dashboard_config)?;
+    let context = Context::new(&dashboard_config);
 
 
-    let redis_config = config["redis"].clone();
-    let mqtt_config = config["mqtt"].clone();
-    let widgets_config = config["widgets"].clone();
-    let bc = tx_publish.clone();
-
-    let mut widgets: Vec<Rc<RefCell<dyn PubSubWidget>>> = Vec::new();
-    let wrc = Rc::new(RefCell::new(widgets));
-
-    tokio::spawn(async move {
-        mqtt_bridge::mqtt(mqtt_config, tx_publish).await;
-    });
-    tokio::spawn(async move {
-        let _ = redis_bridge::redis(redis_config, bc).await;
-    });
     info!("Starting up fltk");
     /*     DeclarativeApp::new(1024, 768, "MyApp", "src/config.yaml", load_fn)
     .run(|_| {})
     .unwrap();*/
     let mut _app = App::default().with_scheme(AppScheme::Oxy);
-    let config = config.clone();
     let mut win = window::Window::default()
         .with_size(context.screen_width, context.screen_height)
         .with_label("FLTK dashboard");

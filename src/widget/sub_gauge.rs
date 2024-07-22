@@ -15,7 +15,7 @@ use crate::pubsub::PubSubEvent;
 use crate::widget::GridRectangle;
 use crate::widget::{dnd_callback, hms};
 use crate::widget::{Context, PubSubWidget, WidgetParams};
-use crate::config::file_xml::Tag; 
+use crate::config::file_xml::WidgetParams; 
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
@@ -43,7 +43,7 @@ fn clap(x:f64,min:f64,max:f64) -> f64 {
 }
 
 impl SubGauge {
-    pub fn new(rect:Rect,cfg:&Tag) -> Self {
+    pub fn new(rect:Rect,cfg:&WidgetParams) -> Self {
         let mut grp = group::Group::default().with_align(Align::Top);
         let mut frame = frame::Frame::default()
             .with_label("50%")

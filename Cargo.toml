@@ -12,12 +12,12 @@ fltk-grid = "0.4.0"
 fltk-table = "0.3.1"
 fltk-theme = "0.7"
 regex = "*"
-serde = "1.0.163" # for a turtle description
-serde_yaml = "0.9.25" # for a yaml description
+serde = "1.0.163" 
+serde_yaml = "0.9.25" 
 serde-xml-rs = { version="0.6.0" }
-log = "*" # for logging
-simplelog = "0.12.1" # for logging
-env_logger = "0.10.0"
+log = "*" 
+simplelog = "0.12.1" 
+env_logger = "0.11.3"
 redis = { git = "https://github.com/redis-rs/redis-rs", branch = "resp3",features = ["tokio-comp"] }
 chrono = "0.4.38" # for time
 mqtt-async-client = "0.3.1" # for mqtt
@@ -29,3 +29,4 @@ plotters = "0.3.6"
 plotters-bitmap = "0.3.6"
 minidom="*"
 minicbor = { version = "0.24.2", features=["derive","alloc","half"] }
+pathfinder_simd = { git = "https://github.com/pbdeuchler/pathfinder", branch = "main" }
