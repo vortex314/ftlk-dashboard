@@ -47,7 +47,7 @@ pub async fn mqtt(config: Value, tx_broadcast: broadcast::Sender<PubSubEvent>) {
                     debug!("Mqtt : {} => {} ", msg.topic().to_string(),String::from_utf8_lossy(msg.payload()).to_string());
                     match tx_broadcast.send(PubSubEvent::Publish {
                         topic: msg.topic().to_string(),
-                        message: String::from_utf8_lossy(msg.payload()).to_string(),
+                        message: Vec::from(msg.payload()),
                     }) {
                         Ok(_) => {}
                         Err(e) => {

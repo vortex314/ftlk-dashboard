@@ -5,6 +5,7 @@
 
 use config::file_xml::{get_widget_params, load_dashboard, load_xml_file};
 use fltk::valuator::Dial;
+use limero::{ActorTrait, SinkRef, SinkTrait, SourceTrait};
 use minidom::Element;
 use regex::Regex;
 
@@ -27,7 +28,6 @@ use fltk::misc::Progress;
 use fltk::widget::Widget;
 use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
-use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
 use fltk_theme::{
     color_themes, widget_themes, ColorTheme, SchemeType, ThemeType, WidgetScheme, WidgetTheme,
@@ -57,6 +57,7 @@ use tokio_stream::StreamExt;
 mod config;
 mod logger;
 mod pubsub;
+use pubsub::zenoh_pubsub::*;
 mod store;
 mod widget;
 use logger::init_logger;
@@ -83,6 +84,23 @@ enum MyError<'a> {
     String(String),
 }
 
+fn start_pubsub(cfg: &Element, event_sink: SinkRef<PubSubEvent>) -> Result<SinkRef<PubSubCmd>, String> {
+    let zenoh = cfg
+        .get_child("Zenoh", "")
+        .ok_or("Zenoh section not found")?;
+    let mut zenoh_actor = PubSubActor::new();
+    let pubsub_cmd = zenoh_actor.sink_ref();
+    zenoh_actor.add_listener(event_sink);
+    tokio::spawn(async move {
+        zenoh_actor.run().await;
+    });
+    pubsub_cmd.push(PubSubCmd::Connect);
+    pubsub_cmd.push(PubSubCmd::Subscribe {
+        topic: "**".to_string(),
+    });
+    Ok(pubsub_cmd)
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<(), MyError<'static>> {
     env::set_var("RUST_LOG", "info");
@@ -90,9 +108,12 @@ async fn main() -> Result<(), MyError<'static>> {
     info!("Starting up. Reading config file .");
 
     let root_config = load_xml_file("./config.xml").map_err(MyError::Xml)?;
+
     let pubsub_config = root_config
         .get_child("PubSub", "")
         .ok_or(MyError::Str("PubSub section not found"))?;
+    let pubsub_cmd = start_pubsub(&pubsub_config).map_err(MyError::String)?;
+
     let dashboard_config = root_config
         .get_child("Dashboard", "")
         .ok_or(MyError::Str("Dashboard section not found"))?;
@@ -146,47 +167,8 @@ async fn main() -> Result<(), MyError<'static>> {
     win.show();
 
     while _app.wait() {
+        win.redraw();
         thread::sleep(std::time::Duration::from_millis(100));
     }
     Ok(())
-}
-
-// async channel receiver
-async fn receiver(mut rx: broadcast::Receiver<PubSubEvent>, pattern: &str) {
-    let mut duration: Duration;
-    const MAX_TIME: std::time::Duration = std::time::Duration::from_secs(10);
-    let mut _time_last = std::time::Instant::now();
-    let mut _alive: bool;
-
-    loop {
-        if _time_last.elapsed() > MAX_TIME {
-            _alive = false;
-            duration = Duration::from_millis(1000);
-        } else {
-            _alive = true;
-            duration = MAX_TIME - _time_last.elapsed()
-        }
-        let event = time::timeout(duration, rx.recv()).await;
-        match event {
-            Ok(Ok(PubSubEvent::Publish { topic, message })) => {
-                if topic.starts_with(pattern) {
-                    _time_last = std::time::Instant::now();
-                    info!(
-                        "Widget pattern : {} topic: {}, message: {}",
-                        pattern, topic, message
-                    );
-                }
-            }
-            Ok(Ok(PubSubEvent::Timer1sec)) => {
-                _time_last = std::time::Instant::now();
-                info!("Timer1sec");
-            }
-            Ok(Err(e)) => {
-                error!(" error: {}", e);
-            }
-            Err(e) => {
-                error!("timeout : {} {} ", pattern, e);
-            }
-        }
-    }
 }

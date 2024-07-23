@@ -1,76 +1,77 @@
 pub mod mqtt_bridge;
 pub mod redis_bridge;
 
-use serde_yaml::Value;
+pub mod zenoh_pubsub;
+use std::convert::Infallible;
 
-#[derive(Debug, Clone)]
-pub enum PubSubEvent {
-    Publish{ topic: String, message: String},
-    Timer1sec,
-}
-#[derive(Debug, Clone)]
+use data::Int;
+use decode::Error;
+use log::info;
+//pub mod mqtt_bridge;
+//pub mod redis_bridge;
+use minicbor::*;
+use minicbor::data::*;
+use zenoh::buffers::ZSliceBuffer;
+
+#[derive(Clone)]
 pub enum PubSubCmd {
-    Subscribe{ pattern: String },
-    Unsubscribe{ pattern: String },
-    Publish{ topic: String, message: String },
+    Publish { topic: String, message: Vec<u8> },
+    Disconnect,
+    Connect,
+    Subscribe { topic: String },
+    Unsubscribe { topic: String },
+}
+
+#[derive(Clone, Debug)]
+pub enum PubSubEvent {
+    Connected,
+    Disconnected,
+    Publish { topic: String, message: Vec<u8> },
+}
+
+pub fn payload_encode<X>( v: X) -> Vec<u8>
+where
+    X: Encode<()>,
+{
+    let mut buffer = Vec::<u8>::new();
+    let mut encoder = Encoder::new(&mut buffer);
+    let _x = encoder.encode(v);
+    _x.unwrap().writer().to_vec()
+}
+
+pub fn payload_decode<'a,T>(v: &'a Vec<u8>) -> Result<T, decode::Error>
+where T : Decode<'a,()>
+{
+    let mut decoder = Decoder::new(v);
+    decoder.decode::<T>()
 }
 
 
-pub fn split_underscore(str: &String) -> (Option<&str>, Option<&str>) {
-    let mut it = str.split("_");
-    (it.next(), it.next())
+pub fn payload_display(v: &Vec<u8>) -> String {
+    let line:String  = v.iter().map(|b| format!("{:02X} ", b)).collect();
+    let s = format!("{}", minicbor::display(v.as_slice()));
+    if s.len() == 0 {
+        line
+    } else {
+        s
+    }
 }
 
-fn get_array_of_2(object: &Value, key: &str) -> Option<(i64, i64)> {
-    info!(
-        " get array of 2 for '{}' in {:?}",
-        key,
-        object[key].as_sequence()
-    );
-    let field1 = object[key]
-        .as_sequence()
-        .and_then(|seq| Some(seq[0].clone()))
-        .and_then(|v| v.as_i64());
-
-    let field2 = object[key]
-        .as_sequence()
-        .and_then(|seq| Some(seq[1].clone()))
-        .and_then(|v| v.as_i64());
-
-    field1
-        .and(field2)
-        .and(Some((field1.unwrap(), field2.unwrap())))
-}
-
-pub fn get_size(object: &Value) -> Option<(i32, i32)> {
-    let pos = get_array_of_2(object, "size");
-    pos.and_then(|(v1, v2)| {
-        let f1 = i32::try_from(v1);
-        let f2 = i32::try_from(v2);
-        if f1.is_ok() && f2.is_ok() {
-            Some((f1.unwrap(), f2.unwrap()))
-        } else {
-            None
-        }
-    })
-}
-
-pub fn get_pos(object: &Value) -> Option<(usize, usize)> {
-    let pos = get_array_of_2(object, "pos");
-    pos.and_then(|(v1, v2)| {
-        let f1 = usize::try_from(v1);
-        let f2 = usize::try_from(v2);
-        if f1.is_ok() && f2.is_ok() {
-            Some((f1.unwrap(), f2.unwrap()))
-        } else {
-            None
-        }
-    })
-}
-
-pub fn value_string_default(object: &Value, key: &str, default: &str) -> String {
-    object[key]
-        .as_str()
-        .map(String::from)
-        .unwrap_or(String::from(default))
+pub fn decode_f64 (payload: &Vec<u8>) -> Result<f64, decode::Error> {
+    let mut decoder = Decoder::new(payload);
+    let v =  decoder.tokens().collect::<Result<Vec<Token>, _>>()?;
+    match v[0] {
+        Token::F16(f) => Ok(f as f64),
+        Token::F32(f) => Ok(f as f64),
+        Token::F64(f) => Ok(f),
+        Token::I16(i) => Ok(i as f64),
+        Token::I32(i) => Ok(i as f64),
+        Token::I64(i) => Ok(i as f64),
+        Token::U16(i) => Ok(i as f64),
+        Token::U32(i) => Ok(i as f64),
+        Token::U64(i) => Ok(i as f64),
+        Token::I8(i) => Ok(i as f64),
+        Token::U8(i) => Ok(i as f64),
+        _ => Err(Error::type_mismatch(decoder.datatype().unwrap())),
+    }
 }

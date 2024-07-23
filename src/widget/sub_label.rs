@@ -1,3 +1,4 @@
+use app::fonts;
 use draw::Rect;
 use fltk::button::Button;
 use fltk::draw::LineStyle;
@@ -11,10 +12,10 @@ use std::rc::Rc;
 use std::time::Instant;
 use std::time::SystemTime;
 
+use crate::config::file_xml::WidgetParams;
 use crate::pubsub::PubSubEvent;
 use crate::widget::hms;
 use crate::widget::Context;
-use crate::config::file_xml::WidgetParams; 
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
@@ -29,30 +30,8 @@ pub struct SubLabel {
     ctx: Context,
 }
 
-fn dnd_callback(widget: &mut dyn WidgetExt, ev: Event) -> bool {
-    match ev {
-        Event::DndDrag => {
-            info!("DndDrag");
-            true
-        }
-        Event::DndEnter => {
-            widget.set_color(Color::Red);
-            true
-        }
-        Event::DndLeave => {
-            widget.set_color(Color::White);
-            true
-        }
-        Event::DndRelease => {
-            widget.set_color(Color::White);
-            true
-        }
-        _ => false,
-    }
-}
-
 impl SubLabel {
-    pub fn new(cfg:&WidgetParams) -> Self {
+    pub fn new(cfg: &WidgetParams) -> Self {
         SubLabel {
             value: 0.0,
             last_update: std::time::UNIX_EPOCH,
@@ -62,36 +41,53 @@ impl SubLabel {
         }
     }
 
-
-
     pub fn draw(&mut self) {
-        let mut frame = fltk::frame::Frame::new(self.cfg.rect.x,self.cfg.rect.y,self.cfg.rect.w,self.cfg.rect.h,None);
+        let mut frame = fltk::frame::Frame::new(
+            self.cfg.rect.x,
+            self.cfg.rect.y,
+            self.cfg.rect.w,
+            self.cfg.rect.h,
+            None,
+        );
         frame.set_frame(FrameType::BorderBox);
         frame.set_color(Color::from_u32(0xFFFFFF));
+        frame.set_label_font(Font::HelveticaBold);
         frame.set_align(Align::Center);
         let label = self.cfg.label.as_ref().unwrap().clone();
+        self.cfg.label.as_ref().map(|s| frame.set_label(s.as_str()));
+
+        let origins = (self.cfg.rect.x, self.cfg.rect.y);
         frame.handle({
             let mut x = 0;
             let mut y = 0;
+            let mut new_x = 0;
+            let mut new_y = 0;
+            let mut origins = origins;
             move |w, ev| match ev {
                 enums::Event::Push => {
-                    let coords = app::event_coords();
-                    x = coords.0;
-                    y = coords.1;
-                    info!("Pushed {} at {}, {}",label ,x, y);
-                    true
+                    if app::event_mouse_button() == app::MouseButton::Left {
+                        (x, y) = app::event_coords();
+                        true
+                    } else {
+                        false
+                    }
                 }
                 enums::Event::Drag => {
-                    w.set_pos(app::event_x_root() - x, app::event_y_root() - y);
-                    info!("Drag {} at {}, {}",label ,app::event_x_root() - x, app::event_y_root() - y);
-
+                    let (x1, y1) = app::event_coords();
+                    (new_x, new_y) = (origins.0 + x1 - x, origins.1 + y1 - y);
+                    w.set_pos(new_x, new_y);
                     true
                 }
-                _ => false,
+                enums::Event::Released => {
+                    if app::event_mouse_button() == app::MouseButton::Left {
+                        origins = (new_x, new_y);
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ev => false,
             }
-        });        
-        self.cfg.label.as_ref().map(|s| frame.set_label(s.as_str()));
+        });
     }
 }
-
-

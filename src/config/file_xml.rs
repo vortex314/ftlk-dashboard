@@ -7,7 +7,6 @@ use std::io::Error;
 use std::io::Read;
 use std::{collections::BTreeMap, str::FromStr};
 
-use serde::{Deserialize, Serialize};
 use serde_xml_rs::from_str;
 
 #[derive(Debug,Clone)]

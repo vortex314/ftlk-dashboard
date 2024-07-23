@@ -7,16 +7,16 @@
     <Dashboard w="1024" h="768" label="Prototype Dashboard" theme="light">
         <Col w="800">
             <Row h="200">
-                <Label w="70" h="50" label="All" src="src/esp32/sys/latency" />
-                <Table w="600" h="200" label="ESP32" src=".*" timeout="10000" />
-                <Gauge w="150" label="Latency" src="src/esp32/sys/latency" timeout="100000"
+                <Label w="70" h="50" label=" 70 x 50 " src="src/esp32/sys/latency" />
+                <Table w="600" h="200" label="Table" src=".*" timeout="10000" />
+                <Gauge w="150" label="Gauge" src="src/esp32/sys/latency" timeout="100000"
                     min="0"
                     max="10" />
             </Row>
             <Row h="270">
-                <Progress w="20" label="Voltage" unit="msec" src="src/esp32/sys/latency"
+                <Progress w="20" label="Progress" unit="msec" src="src/esp32/sys/latency"
                     min="0.0" max="5.0" />
-                <Plot label="Latency" unit="V" src="src/esp32/sys/latency" min="0.0" max="10.0"
+                <Plot label="Plot" unit="V" src="src/esp32/sys/latency" min="0.0" max="10.0"
                     timespan="1000000" samples="10000" />
             </Row>
         </Col>

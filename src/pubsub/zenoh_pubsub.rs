@@ -14,8 +14,8 @@ use crate::limero::Sink;
 use crate::limero::SinkRef;
 use crate::limero::SinkTrait;
 use crate::limero::Source;
-use crate::ActorTrait;
-use crate::SourceTrait;
+use crate::limero::ActorTrait;
+use crate::limero::SourceTrait;
 
 
 use minicbor::display;

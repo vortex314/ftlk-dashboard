@@ -8,7 +8,6 @@ edition = "2021"
 tokio = { version = "1.38.1", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["full"] }
 fltk = { version = "1.4.32", features = [] }
-fltk-grid = "0.4.0"
 fltk-table = "0.3.1"
 fltk-theme = "0.7"
 regex = "*"
@@ -31,3 +30,4 @@ minidom="*"
 minicbor = { version = "0.24.2", features=["derive","alloc","half"] }
 pathfinder_simd = { version ="0.5.4" }
 time = "0.3.36"
+zenoh = { version = "0.11.0" }
