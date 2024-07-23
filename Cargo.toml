@@ -29,4 +29,5 @@ plotters = "0.3.6"
 plotters-bitmap = "0.3.6"
 minidom="*"
 minicbor = { version = "0.24.2", features=["derive","alloc","half"] }
-pathfinder_simd = { git = "https://github.com/pbdeuchler/pathfinder", branch = "main" }
+pathfinder_simd = { version ="0.5.4" }
+time = "0.3.36"

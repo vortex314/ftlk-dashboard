@@ -15,11 +15,13 @@ use tokio::sync::RwLock;
 
 // pub mod gauge;
 pub mod sub_gauge ;
+pub mod sub_label;
 // pub mod sub_plot;
 // pub mod sub_status;
 // pub mod sub_text;
 
 pub use sub_gauge::SubGauge as SubGauge;
+pub use sub_label::SubLabel as SubLabel;
 
 
 

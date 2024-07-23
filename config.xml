@@ -9,7 +9,8 @@
             <Row h="200">
                 <Label w="70" h="50" label="All" src="src/esp32/sys/latency" />
                 <Table w="600" h="200" label="ESP32" src=".*" timeout="10000" />
-                <SubGauge w="150" label="Latency" src="src/esp32/sys/latency" timeout="100000" min="0"
+                <Gauge w="150" label="Latency" src="src/esp32/sys/latency" timeout="100000"
+                    min="0"
                     max="10" />
             </Row>
             <Row h="270">

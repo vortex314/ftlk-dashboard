@@ -18,6 +18,7 @@ use simplelog::SimpleLogger;
 use fltk::app::AppScheme;
 use fltk::app::{awake, redraw, App};
 use fltk::button::Button;
+use fltk::draw::Rect;
 use fltk::enums::Color;
 use fltk::enums::Event;
 use fltk::frame::Frame;
@@ -26,7 +27,6 @@ use fltk::misc::Progress;
 use fltk::widget::Widget;
 use fltk::window::DoubleWindow;
 use fltk::{prelude::*, *};
-use fltk::draw::Rect;
 use fltk_grid::Grid;
 use fltk_table::{SmartTable, TableOpts};
 use fltk_theme::{
@@ -63,12 +63,16 @@ use logger::init_logger;
 use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
+use widget::sub_label::SubLabel;
 
 use widget::*;
 mod limero;
 
 use rand::random;
 
+pub fn default_str(opt: Option<String>, default: &str) -> String {
+    opt.unwrap_or(default.to_string())
+}
 
 #[derive(Debug)]
 enum MyError<'a> {
@@ -79,130 +83,70 @@ enum MyError<'a> {
     String(String),
 }
 
-
 #[tokio::main(flavor = "multi_thread")]
-async fn main() -> Result<(),MyError<'static> >{
+async fn main() -> Result<(), MyError<'static>> {
     env::set_var("RUST_LOG", "info");
     init_logger();
     info!("Starting up. Reading config file .");
 
     let root_config = load_xml_file("./config.xml").map_err(MyError::Xml)?;
-    let pubsub_config = root_config.get_child("PubSub","").ok_or(MyError::Str("PubSub section not found"))?;
-    let dashboard_config = root_config.get_child("Dashboard","").ok_or(MyError::Str("Dashboard section not found"))?;
+    let pubsub_config = root_config
+        .get_child("PubSub", "")
+        .ok_or(MyError::Str("PubSub section not found"))?;
+    let dashboard_config = root_config
+        .get_child("Dashboard", "")
+        .ok_or(MyError::Str("Dashboard section not found"))?;
     let widgets = load_dashboard(&dashboard_config).map_err(MyError::String)?;
     let mut context = Context::new();
-    let window_params = get_widget_params(Rect::new(0,0,0,0),&root_config).map_err(MyError::String)?;
-    let window_rect = Rect::new(0, 0, window_params.width.unwrap_or(1024), window_params.height.unwrap_or(768));
+    let window_params =
+        get_widget_params(Rect::new(0, 0, 0, 0), &dashboard_config).map_err(MyError::String)?;
+
     context.screen_width = window_params.width.unwrap_or(1024);
     context.screen_height = window_params.height.unwrap_or(768);
-
+    let window_rect = Rect::new(0, 0, context.screen_width, context.screen_height);
     info!("Starting up fltk");
 
     let mut _app = App::default().with_scheme(AppScheme::Oxy);
     let mut win = window::Window::default()
-        .with_size(window_params.width.unwrap_or(1024), window_params.height.unwrap_or(768))
-        .with_label("FLTK dashboard");
+        .with_size(context.screen_width, context.screen_height)
+        .with_label(&default_str(window_params.label, "FLTK dashboard").as_str());
     win.make_resizable(true);
 
-    let mut entry_list = EntryList::new();
-
-    let mut tab = Tabs::new(0, 0, context.screen_width, context.screen_height, None);
-
-    let grp_table = group::Group::new(20, 20, context.screen_width - 20, context.screen_height - 20, "Table");
-    let mut table = SmartTable::default()
-        .with_size(context.screen_width - 20, context.screen_height - 20)
-        .center_of_parent()
-        .with_opts(TableOpts {
-            rows: 1000,
-            cols: 4,
-            editable: true,
-            ..Default::default()
-        });
-    table.set_col_header(true);
-    table.set_row_header(false);
-    //       table.set_rows(50);
-    //      table.set_cols(4);
-    table.set_col_header_value(0, "Topic");
-    table.set_col_header_value(1, "Message");
-    table.set_col_header_value(2, "Time");
-    table.set_col_header_value(3, "Count");
-    table.set_row_height_all(30);
-    let widths = vec![300, 300, 200, 180];
-    for (i, w) in widths.iter().enumerate() {
-        table.set_col_width(TryInto::<i32>::try_into(i).unwrap(), *w);
-    }
-
-    table.set_col_resize(true);
-    table.set_row_resize(true);
-    table.set_col_header_height(30);
-    table.set_row_header_width(100);
-
-    table.end();
-    grp_table.end();
-
-    let mut grp_dashboard =
-        group::Group::new(20, 20, context.screen_width - 20, context.screen_height - 20, "Dashboard");
-
-    {
-        let mut button = Button::new(20, 20, 32, 32, "@filesave");
-        button.handle(move |b, ev| {
-            if ev == Event::Push {
-                info!("Save config");
-                true
-            } else {
-                false
+    for widget_params in widgets {
+        let widget_type = widget_params.name.as_str();
+        info!("Loading widget {}", widget_type);
+        match widget_type {
+            "Gauge" => {
+                let mut widget = SubLabel::new(&widget_params);
+                widget.draw();
             }
-        });
-        for widget_params in widgets {
-            let widget_type = widget_params.name.as_str();
-            info!("Loading widget {}", widget_type);
-            match widget_type {
-
-                "SubGauge" => {
-                    let mut widget = SubGauge::new(&widget_params);
-                    widget.draw();
-                }
-                _ => {
-                    warn!("Unknown widget type {}", widget_type);
-                }
-            };
-        }
-        
+            "Label" => {
+                let mut widget = SubLabel::new(&widget_params);
+                widget.draw();
+            }
+            "Table" => {
+                let mut widget = SubLabel::new(&widget_params);
+                widget.draw();
+            }
+            "Progress" => {
+                let mut widget = SubLabel::new(&widget_params);
+                widget.draw();
+            }
+            "Plot" => {
+                let mut widget = SubLabel::new(&widget_params);
+                widget.draw();
+            }
+            _ => {
+                warn!("Unknown widget type {}", widget_type);
+            }
+        };
     }
-    //     let mut widgets = window_fill(&mut grid, *config, tx_redis_cmd.clone());
-    grp_dashboard.end();
-    tab.end();
+
     win.end();
     win.show();
 
-    app::add_timeout3(1.0, move |_x| {
-        debug!("add_timeout3");
-        app::repeat_timeout3(1.0, _x);
-    });
     while _app.wait() {
-
-        if true {
-            let entry_count = entry_list.entries.len();
-            let mut row = 0;
-            // table.clear();
-            for entry in entry_list.entries.iter() {
-                //   info!("{} {} {} {}", row,entry.topic, entry.value, entry.time.time());
-                table.set_cell_value(row, 0, entry.topic.as_str());
-                table.set_cell_value(row, 1, entry.value.as_str());
-                table.set_cell_value(
-                    row,
-                    2,
-                    &format!("{}", entry.time.time().format("%H:%M:%S%.3f").to_string()),
-                );
-                table.set_cell_value(row, 3, &format!("{}", entry.count));
-                row += 1;
-                if row == entry_count.try_into().unwrap() {
-                    break;
-                }
-            }
-            table.redraw();
-            awake();
-        }
+        thread::sleep(std::time::Duration::from_millis(100));
     }
     Ok(())
 }
