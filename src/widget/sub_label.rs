@@ -13,13 +13,15 @@ use std::time::Instant;
 use std::time::SystemTime;
 
 use crate::config::file_xml::WidgetParams;
-use crate::pubsub::PubSubEvent;
+use crate::pubsub::{payload_as_f64, payload_decode, PubSubEvent};
 use crate::widget::hms;
 use crate::widget::Context;
 use tokio::sync::mpsc;
 
 use evalexpr::Value as V;
 use evalexpr::*;
+
+use super::PubSubWidget;
 
 #[derive(Debug, Clone)]
 pub struct SubLabel {
@@ -28,6 +30,7 @@ pub struct SubLabel {
     eval_expr: Option<Node>,
     cfg: WidgetParams,
     ctx: Context,
+    frame : Option<fltk::frame::Frame>,
 }
 
 impl SubLabel {
@@ -38,10 +41,13 @@ impl SubLabel {
             eval_expr: None,
             cfg: cfg.clone(),
             ctx: Context::new(),
+            frame: None,
         }
     }
+}
 
-    pub fn draw(&mut self) {
+impl PubSubWidget for SubLabel {
+    fn draw(&mut self) {
         let mut frame = fltk::frame::Frame::new(
             self.cfg.rect.x,
             self.cfg.rect.y,
@@ -56,7 +62,9 @@ impl SubLabel {
         let label = self.cfg.label.as_ref().unwrap().clone();
         self.cfg.label.as_ref().map(|s| frame.set_label(s.as_str()));
 
-        let origins = (self.cfg.rect.x, self.cfg.rect.y);
+        self.frame = Some(frame);
+
+ /*        let origins = (self.cfg.rect.x, self.cfg.rect.y);
         frame.handle({
             let mut x = 0;
             let mut y = 0;
@@ -88,6 +96,26 @@ impl SubLabel {
                 }
                 _ev => false,
             }
-        });
+        });*/
+    }
+
+    fn update(&mut self, event: & PubSubEvent) {
+        match event {
+            PubSubEvent::Publish { topic, message } => {
+                let topic_cfg = self.cfg.src_topic.as_ref().clone();
+                if *topic == *topic_cfg.unwrap() {
+                    info!("SubLabel: {:?}", message);
+                    let _ = payload_as_f64(&message).and_then  (|v| {
+                        self.value = v;
+                        let binding = " ?? ".to_string();
+                        let suffix = self.cfg.suffix.as_ref().unwrap_or(&binding);
+                        let line = format!("{:.2} {}", self.value,suffix);
+                        self.frame.as_mut().map(|f| f.set_label(&line));
+                        Ok(())
+                    });
+                }
+            }
+            _ => {}
+        }
     }
 }

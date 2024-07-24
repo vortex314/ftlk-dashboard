@@ -26,7 +26,7 @@ pub struct WidgetParams {
     pub pressed: Option<String>,
     pub released: Option<String>,
     pub prefix: Option<String>,
-    pub postfix: Option<String>,
+    pub suffix: Option<String>,
     pub unit: Option<String>,
     pub ok: Option<String>,
     pub ko: Option<String>,
@@ -61,8 +61,8 @@ pub fn get_widget_params(rect:Rect,element: &Element) -> Result<WidgetParams, St
             "prefix" => {
                 widget_params.prefix = Some(String::from(attr_value));
             }
-            "postfix" => {
-                widget_params.postfix = Some(String::from(attr_value));
+            "suffix" => {
+                widget_params.suffix = Some(String::from(attr_value));
             }
             "unit" => {
                 widget_params.unit = Some(String::from(attr_value));
@@ -140,7 +140,7 @@ impl WidgetParams {
             pressed: None,
             released: None,
             prefix: None,
-            postfix: None,
+            suffix: None,
             unit: None,
             ok: None,
             ko: None,

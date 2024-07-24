@@ -65,6 +65,7 @@ use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
 use widget::sub_label::SubLabel;
+use widget::PubSubWidget;
 
 use widget::*;
 mod limero;
@@ -84,7 +85,10 @@ enum MyError<'a> {
     String(String),
 }
 
-fn start_pubsub(cfg: &Element, event_sink: SinkRef<PubSubEvent>) -> Result<SinkRef<PubSubCmd>, String> {
+fn start_pubsub(
+    cfg: &Element,
+    event_sink: SinkRef<PubSubEvent>,
+) -> Result<SinkRef<PubSubCmd>, String> {
     let zenoh = cfg
         .get_child("Zenoh", "")
         .ok_or("Zenoh section not found")?;
@@ -107,17 +111,20 @@ async fn main() -> Result<(), MyError<'static>> {
     init_logger();
     info!("Starting up. Reading config file .");
 
+    let mut event_sink = limero::Sink::new(100);
+
     let root_config = load_xml_file("./config.xml").map_err(MyError::Xml)?;
 
     let pubsub_config = root_config
         .get_child("PubSub", "")
         .ok_or(MyError::Str("PubSub section not found"))?;
-    let pubsub_cmd = start_pubsub(&pubsub_config).map_err(MyError::String)?;
+    let pubsub_cmd =
+        start_pubsub(&pubsub_config, event_sink.sink_ref()).map_err(MyError::String)?;
 
     let dashboard_config = root_config
         .get_child("Dashboard", "")
         .ok_or(MyError::Str("Dashboard section not found"))?;
-    let widgets = load_dashboard(&dashboard_config).map_err(MyError::String)?;
+    let widgets_params = load_dashboard(&dashboard_config).map_err(MyError::String)?;
     let mut context = Context::new();
     let window_params =
         get_widget_params(Rect::new(0, 0, 0, 0), &dashboard_config).map_err(MyError::String)?;
@@ -133,17 +140,23 @@ async fn main() -> Result<(), MyError<'static>> {
         .with_label(&default_str(window_params.label, "FLTK dashboard").as_str());
     win.make_resizable(true);
 
-    for widget_params in widgets {
+    let mut widgets = Vec::<Box<dyn PubSubWidget>>::new();
+
+    for widget_params in widgets_params {
         let widget_type = widget_params.name.as_str();
         info!("Loading widget {}", widget_type);
         match widget_type {
             "Gauge" => {
                 let mut widget = SubLabel::new(&widget_params);
                 widget.draw();
+
+                widgets.push(Box::new(widget));
             }
             "Label" => {
                 let mut widget = SubLabel::new(&widget_params);
                 widget.draw();
+
+                widgets.push(Box::new(widget));
             }
             "Table" => {
                 let mut widget = SubLabel::new(&widget_params);
@@ -167,6 +180,10 @@ async fn main() -> Result<(), MyError<'static>> {
     win.show();
 
     while _app.wait() {
+        let m = event_sink.next().await.unwrap();
+        for widget in widgets.iter_mut() {
+            widget.update(&m);
+        }
         win.redraw();
         thread::sleep(std::time::Duration::from_millis(100));
     }

@@ -24,6 +24,10 @@ pub use sub_gauge::SubGauge as SubGauge;
 pub use sub_label::SubLabel as SubLabel;
 
 
+pub trait PubSubWidget {
+    fn update(&mut self, event:& PubSubEvent);
+    fn draw(&mut self);
+}
 
 
 pub fn hms(msec: u64) -> String {

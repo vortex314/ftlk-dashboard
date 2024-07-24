@@ -9,7 +9,7 @@
             <Row h="200">
                 <Label w="70" h="50" label=" 70 x 50 " src="src/esp32/sys/latency" />
                 <Table w="600" h="200" label="Table" src=".*" timeout="10000" />
-                <Gauge w="150" label="Gauge" src="src/esp32/sys/latency" timeout="100000"
+                <Gauge w="150" label="Gauge" src="src/esp32/sys/latency" suffix=" msec" timeout="100000"
                     min="0"
                     max="10" />
             </Row>

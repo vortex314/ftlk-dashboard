@@ -57,7 +57,7 @@ pub fn payload_display(v: &Vec<u8>) -> String {
     }
 }
 
-pub fn decode_f64 (payload: &Vec<u8>) -> Result<f64, decode::Error> {
+pub fn payload_as_f64 (payload: &Vec<u8>) -> Result<f64, decode::Error> {
     let mut decoder = Decoder::new(payload);
     let v =  decoder.tokens().collect::<Result<Vec<Token>, _>>()?;
     match v[0] {
