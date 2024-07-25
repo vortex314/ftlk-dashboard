@@ -10,21 +10,19 @@ use tokio::io::split;
 use tokio::io::AsyncReadExt;
 use tokio::select;
 
+use crate::limero::ActorTrait;
 use crate::limero::Sink;
 use crate::limero::SinkRef;
 use crate::limero::SinkTrait;
 use crate::limero::Source;
-use crate::limero::ActorTrait;
 use crate::limero::SourceTrait;
 
-
+use crate::pubsub::payload_display;
+use crate::pubsub::{PubSubCmd, PubSubEvent};
 use minicbor::display;
 use zenoh::open;
 use zenoh::prelude::r#async::*;
 use zenoh::subscriber::Subscriber;
-use crate::pubsub::{PubSubCmd, PubSubEvent};
-use crate::pubsub::payload_display;
-
 
 pub struct PubSubActor {
     cmds: Sink<PubSubCmd>,
@@ -56,6 +54,7 @@ impl ActorTrait<PubSubCmd, PubSubEvent> for PubSubActor {
     async fn run(&mut self) {
         let static_session: &'static mut Session =
             Session::leak(zenoh::open(config::default()).res().await.unwrap());
+        let subscriber = static_session.declare_subscriber("**").res().await.unwrap();
         loop {
             select! {
                 cmd = self.cmds.next() => {
@@ -83,18 +82,7 @@ impl ActorTrait<PubSubCmd, PubSubEvent> for PubSubActor {
                             let subscriber = static_session.declare_subscriber(&topic).res().await;
                             match subscriber {
                                 Ok(sub) => {
-                                    let emitter =  self.events.clone();
-                                    tokio::spawn(async move {
-                                        while let Ok(sample) = sub.recv_async().await {
-                                            let data = sample.payload.contiguous().to_vec();
-                                            let s = format!("{}", minicbor::display(&data));
-                                            debug!("Received: {}:[{}]:{}",sample.key_expr.to_string(), data.len(),payload_display(&data));
-                                            emitter.emit(PubSubEvent::Publish {
-                                                topic: sample.key_expr.to_string(),
-                                                message:sample.payload.contiguous().to_vec(),
-                                            });
-                                        };
-                                    });
+
                                 }
                                 Err(e) => {
                                     error!("Error subscribing to zenoh: {}", e);
@@ -107,6 +95,19 @@ impl ActorTrait<PubSubCmd, PubSubEvent> for PubSubActor {
                         }
                         None => {
                             info!("PubSubActor::run() None");
+                        }
+                    }
+                },
+                msg = subscriber.recv_async() => {
+                    match msg {
+                        Ok(msg) => {
+                            let topic = msg.key_expr.to_string();
+                            let message = msg.payload.contiguous().to_vec();
+                            let event = PubSubEvent::Publish { topic, message };
+                            self.events.emit(event);
+                        }
+                        Err(e) => {
+                            info!("PubSubActor::run() error {} ",e);
                         }
                     }
                 }
