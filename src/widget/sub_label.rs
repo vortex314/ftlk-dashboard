@@ -62,9 +62,8 @@ impl PubSubWidget for SubLabel {
         let label = self.cfg.label.as_ref().unwrap().clone();
         self.cfg.label.as_ref().map(|s| frame.set_label(s.as_str()));
 
-        self.frame = Some(frame);
 
- /*        let origins = (self.cfg.rect.x, self.cfg.rect.y);
+         let origins = (self.cfg.rect.x, self.cfg.rect.y);
         frame.handle({
             let mut x = 0;
             let mut y = 0;
@@ -96,10 +95,13 @@ impl PubSubWidget for SubLabel {
                 }
                 _ev => false,
             }
-        });*/
+        });
+        self.frame = Some(frame);
+
     }
 
     fn update(&mut self, event: & PubSubEvent) {
+        info!("SubLabel update : {:?}", event);
         match event {
             PubSubEvent::Publish { topic, message } => {
                 let topic_cfg = self.cfg.src_topic.as_ref().clone();

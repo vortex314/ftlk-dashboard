@@ -3,10 +3,12 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
+use app::wait_for;
 use config::file_xml::{get_widget_params, load_dashboard, load_xml_file};
 use fltk::valuator::Dial;
 use limero::{ActorTrait, SinkRef, SinkTrait, SourceTrait};
 use minidom::Element;
+use pubsub::mqtt_pubsub::MqttPubSubActor;
 use regex::Regex;
 
 #[macro_use]
@@ -33,6 +35,7 @@ use fltk_theme::{
     color_themes, widget_themes, ColorTheme, SchemeType, ThemeType, WidgetScheme, WidgetTheme,
 };
 
+use core::error;
 //==================================================================================================
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -49,7 +52,7 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::RwLock;
 
-use tokio::task;
+use tokio::{select, task};
 use tokio::task::block_in_place;
 use tokio::time::{self, Duration};
 use tokio_stream::StreamExt;
@@ -61,7 +64,7 @@ use pubsub::zenoh_pubsub::*;
 mod store;
 mod widget;
 use logger::init_logger;
-use pubsub::{mqtt_bridge, redis_bridge, PubSubCmd, PubSubEvent};
+use pubsub::{mqtt_pubsub, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
 use widget::sub_label::SubLabel;
@@ -85,14 +88,14 @@ enum MyError<'a> {
     String(String),
 }
 
-fn start_pubsub(
+fn start_pubsub_zenoh(
     cfg: &Element,
     event_sink: SinkRef<PubSubEvent>,
 ) -> Result<SinkRef<PubSubCmd>, String> {
     let zenoh = cfg
         .get_child("Zenoh", "")
         .ok_or("Zenoh section not found")?;
-    let mut zenoh_actor = PubSubActor::new();
+    let mut zenoh_actor = ZenohPubSubActor::new();
     let pubsub_cmd = zenoh_actor.sink_ref();
     zenoh_actor.add_listener(event_sink);
     tokio::spawn(async move {
@@ -105,7 +108,26 @@ fn start_pubsub(
     Ok(pubsub_cmd)
 }
 
-#[tokio::main(flavor = "multi_thread")]
+fn start_pubsub_mqtt(
+    cfg: &Element,
+    event_sink: SinkRef<PubSubEvent>,
+) -> Result<SinkRef<PubSubCmd>, String> {
+
+    let mut mqtt_actor = MqttPubSubActor::new();
+    let pubsub_cmd = mqtt_actor.sink_ref();
+    mqtt_actor.add_listener(event_sink);
+    tokio::spawn(async move {
+        mqtt_actor.run().await;
+        error!("Mqtt actor exited");
+    });
+ /*   pubsub_cmd.push(PubSubCmd::Connect);
+    pubsub_cmd.push(PubSubCmd::Subscribe {
+        topic: "**".to_string(),
+    });*/
+    Ok(pubsub_cmd)
+}
+
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<(), MyError<'static>> {
     env::set_var("RUST_LOG", "info");
     init_logger();
@@ -119,7 +141,7 @@ async fn main() -> Result<(), MyError<'static>> {
         .get_child("PubSub", "")
         .ok_or(MyError::Str("PubSub section not found"))?;
     let pubsub_cmd =
-        start_pubsub(&pubsub_config, event_sink.sink_ref()).map_err(MyError::String)?;
+        start_pubsub_mqtt(&pubsub_config, event_sink.sink_ref()).map_err(MyError::String)?;
 
     let dashboard_config = root_config
         .get_child("Dashboard", "")
@@ -179,13 +201,27 @@ async fn main() -> Result<(), MyError<'static>> {
     win.end();
     win.show();
 
-    while _app.wait() {
-        let m = event_sink.next().await.unwrap();
-        for widget in widgets.iter_mut() {
-            widget.update(&m);
+    loop {
+        // info!("Waiting for event");
+        select! {
+            m = event_sink.next() => {
+                // info!("Event {:?}", &m);
+                for widget in widgets.iter_mut() {
+                    widget.update(&m.clone().unwrap());
+                }
+                win.redraw();
+            }
+            t = time::sleep(Duration::from_millis(100)) => {
+               // info!("Timeout {:?}", t);
+            }
         }
+        let _ = fltk::app::wait_for(0.1);
+        win.show();
         win.redraw();
-        thread::sleep(std::time::Duration::from_millis(100));
-    }
-    Ok(())
+        // sleeps are necessary when calling redraw in the event loop
+        app::sleep(0.016);
+       // fltk::app::redraw();
+
+    };
+
 }

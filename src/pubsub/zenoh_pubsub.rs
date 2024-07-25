@@ -24,13 +24,13 @@ use zenoh::open;
 use zenoh::prelude::r#async::*;
 use zenoh::subscriber::Subscriber;
 
-pub struct PubSubActor {
+pub struct ZenohPubSubActor {
     cmds: Sink<PubSubCmd>,
     events: Source<PubSubEvent>,
     config: zenoh::config::Config,
 }
 
-impl PubSubActor {
+impl ZenohPubSubActor {
     pub fn new() -> Self {
         let mut config = Config::from_file("./zenohd.json5");
         if config.is_err() {
@@ -42,7 +42,7 @@ impl PubSubActor {
         } else {
             info!("Using zenohd.json5 file");
         }
-        PubSubActor {
+        ZenohPubSubActor {
             cmds: Sink::new(100),
             events: Source::new(),
             config: config.unwrap(),
@@ -50,7 +50,7 @@ impl PubSubActor {
     }
 }
 
-impl ActorTrait<PubSubCmd, PubSubEvent> for PubSubActor {
+impl ActorTrait<PubSubCmd, PubSubEvent> for ZenohPubSubActor {
     async fn run(&mut self) {
         let static_session: &'static mut Session =
             Session::leak(zenoh::open(config::default()).res().await.unwrap());
@@ -120,7 +120,7 @@ impl ActorTrait<PubSubCmd, PubSubEvent> for PubSubActor {
     }
 }
 
-impl SourceTrait<PubSubEvent> for PubSubActor {
+impl SourceTrait<PubSubEvent> for ZenohPubSubActor {
     fn add_listener(&mut self, sink: SinkRef<PubSubEvent>) {
         self.events.add_listener(sink);
     }

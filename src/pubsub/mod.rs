@@ -1,4 +1,4 @@
-pub mod mqtt_bridge;
+pub mod mqtt_pubsub;
 pub mod redis_bridge;
 
 pub mod zenoh_pubsub;
