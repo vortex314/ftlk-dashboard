@@ -67,14 +67,11 @@ impl ActorTrait<PubSubCmd, PubSubEvent> for ZenohPubSubActor {
                             info!("Disconnecting from zenoh");
                             self.events.emit(PubSubEvent::Disconnected);
                         }
-                        Some(PubSubCmd::Publish { topic, message}) => {
-                            let s = format!("{}", minicbor::display(message.as_slice()));
-                            let s :&str = s.as_str();
-                            let v:Value = s.into();
-                            info!("Publishing to zenoh: {}", v);
+                        Some(PubSubCmd::Publish { topic, payload}) => {
+                            info!("Publishing to zenoh: {}:{}", topic,payload_display(&payload));
                             let _res = static_session
-                                .put(&topic,v)
-                                .encoding(KnownEncoding::TextPlain)
+                                .put(&topic,payload.as_slice())
+                                .encoding(KnownEncoding::AppOctetStream)
                                 .res().await;
                         }
                         Some(PubSubCmd::Subscribe { topic }) => {
@@ -102,8 +99,8 @@ impl ActorTrait<PubSubCmd, PubSubEvent> for ZenohPubSubActor {
                     match msg {
                         Ok(msg) => {
                             let topic = msg.key_expr.to_string();
-                            let message = msg.payload.contiguous().to_vec();
-                            let event = PubSubEvent::Publish { topic, message };
+                            let payload = msg.payload.contiguous().to_vec();
+                            let event = PubSubEvent::Publish { topic, payload };
                             self.events.emit(event);
                         }
                         Err(e) => {

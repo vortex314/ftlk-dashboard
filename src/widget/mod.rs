@@ -16,16 +16,25 @@ use tokio::sync::RwLock;
 // pub mod gauge;
 pub mod sub_gauge ;
 pub mod sub_label;
+pub mod pub_button;
+pub mod broker_alive;
 // pub mod sub_plot;
 // pub mod sub_status;
 // pub mod sub_text;
 
 pub use sub_gauge::SubGauge as SubGauge;
 pub use sub_label::SubLabel as SubLabel;
+pub use pub_button::PubButton as PubButton;
+pub use broker_alive::BrokerAlive as BrokerAlive;
 
+#[derive(Debug, Clone)]
+pub enum WidgetMsg {
+    Pub { topic : String, payload : Vec<u8>},
+    Tick ,
+}
 
-pub trait PubSubWidget {
-    fn update(&mut self, event:& PubSubEvent);
+pub trait PubSubWidget : Send {
+    fn update(&mut self, event:& WidgetMsg);
     fn draw(&mut self);
 }
 

@@ -52,9 +52,9 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::RwLock;
 
-use tokio::{select, task};
 use tokio::task::block_in_place;
 use tokio::time::{self, Duration};
+use tokio::{select, task};
 use tokio_stream::StreamExt;
 
 mod config;
@@ -68,6 +68,8 @@ use pubsub::{mqtt_pubsub, redis_bridge, PubSubCmd, PubSubEvent};
 use store::sub_table::EntryList;
 use widget::sub_gauge::SubGauge;
 use widget::sub_label::SubLabel;
+use widget::BrokerAlive;
+use widget::PubButton;
 use widget::PubSubWidget;
 
 use widget::*;
@@ -86,6 +88,7 @@ enum MyError<'a> {
     Yaml(serde_yaml::Error),
     Str(&'a str),
     String(String),
+    Fltk(fltk::prelude::FltkError),
 }
 
 fn start_pubsub_zenoh(
@@ -112,7 +115,6 @@ fn start_pubsub_mqtt(
     cfg: &Element,
     event_sink: SinkRef<PubSubEvent>,
 ) -> Result<SinkRef<PubSubCmd>, String> {
-
     let mut mqtt_actor = MqttPubSubActor::new();
     let pubsub_cmd = mqtt_actor.sink_ref();
     mqtt_actor.add_listener(event_sink);
@@ -120,7 +122,7 @@ fn start_pubsub_mqtt(
         mqtt_actor.run().await;
         error!("Mqtt actor exited");
     });
- /*   pubsub_cmd.push(PubSubCmd::Connect);
+    /*   pubsub_cmd.push(PubSubCmd::Connect);
     pubsub_cmd.push(PubSubCmd::Subscribe {
         topic: "**".to_string(),
     });*/
@@ -140,9 +142,10 @@ async fn main() -> Result<(), MyError<'static>> {
     let pubsub_config = root_config
         .get_child("PubSub", "")
         .ok_or(MyError::Str("PubSub section not found"))?;
+    /*let pubsub_cmd =
+        start_pubsub_mqtt(&pubsub_config, event_sink.sink_ref()).map_err(MyError::String)?;*/
     let pubsub_cmd =
-        start_pubsub_mqtt(&pubsub_config, event_sink.sink_ref()).map_err(MyError::String)?;
-
+        start_pubsub_zenoh(&pubsub_config, event_sink.sink_ref()).map_err(MyError::String)?;
     let dashboard_config = root_config
         .get_child("Dashboard", "")
         .ok_or(MyError::Str("Dashboard section not found"))?;
@@ -180,6 +183,11 @@ async fn main() -> Result<(), MyError<'static>> {
 
                 widgets.push(Box::new(widget));
             }
+            "BrokerAlive" => {
+                let mut widget = BrokerAlive::new(&widget_params, pubsub_cmd.clone());
+                widget.draw();
+                widgets.push(Box::new(widget));
+            }
             "Table" => {
                 let mut widget = SubLabel::new(&widget_params);
                 widget.draw();
@@ -192,6 +200,10 @@ async fn main() -> Result<(), MyError<'static>> {
                 let mut widget = SubLabel::new(&widget_params);
                 widget.draw();
             }
+            "Button" => {
+                let mut widget = PubButton::new(&widget_params, pubsub_cmd.clone());
+                widget.draw();
+            }
             _ => {
                 warn!("Unknown widget type {}", widget_type);
             }
@@ -201,27 +213,38 @@ async fn main() -> Result<(), MyError<'static>> {
     win.end();
     win.show();
 
-    loop {
+
+
+    //   tokio::time::sleep(Duration::from_secs(100)).await;
+
+    let _jh = tokio::spawn(  async move   {
+        loop {
         // info!("Waiting for event");
         select! {
             m = event_sink.next() => {
-                // info!("Event {:?}", &m);
-                for widget in widgets.iter_mut() {
-                    widget.update(&m.clone().unwrap());
+                if m.is_some() {
+                    match m.unwrap() {
+                        PubSubEvent::Publish{topic, payload} => {
+                        for widget in widgets.iter_mut() {
+                            widget.update(&WidgetMsg::Pub { topic:topic.clone(),payload:payload.clone() });
+                        }
+                    },
+                    _ => {}
                 }
-                win.redraw();
+            }},
+            t = time::sleep(Duration::from_millis(1000)) => {
+                for widget in widgets.iter_mut() {
+                    widget.update(&WidgetMsg::Tick );
+                }
             }
-            t = time::sleep(Duration::from_millis(100)) => {
-               // info!("Timeout {:?}", t);
-            }
-        }
-        let _ = fltk::app::wait_for(0.1);
-        win.show();
-        win.redraw();
-        // sleeps are necessary when calling redraw in the event loop
-        app::sleep(0.016);
-       // fltk::app::redraw();
-
+        };
+        awake();
     };
+    });
 
+
+    while _app.wait() {
+        win.redraw();
+    }
+    Ok(())
 }

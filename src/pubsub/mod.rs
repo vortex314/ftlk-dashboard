@@ -13,9 +13,9 @@ use minicbor::*;
 use minicbor::data::*;
 use zenoh::buffers::ZSliceBuffer;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum PubSubCmd {
-    Publish { topic: String, message: Vec<u8> },
+    Publish { topic: String, payload: Vec<u8> },
     Disconnect,
     Connect,
     Subscribe { topic: String },
@@ -26,7 +26,7 @@ pub enum PubSubCmd {
 pub enum PubSubEvent {
     Connected,
     Disconnected,
-    Publish { topic: String, message: Vec<u8> },
+    Publish { topic: String, payload: Vec<u8> },
 }
 
 pub fn payload_encode<X>( v: X) -> Vec<u8>
@@ -72,6 +72,7 @@ pub fn payload_as_f64 (payload: &Vec<u8>) -> Result<f64, decode::Error> {
         Token::U64(i) => Ok(i as f64),
         Token::I8(i) => Ok(i as f64),
         Token::U8(i) => Ok(i as f64),
+        Token::Bool(b) => Ok(if b { 1.0 } else { 0.0 }),
         _ => Err(Error::type_mismatch(decoder.datatype().unwrap())),
     }
 }

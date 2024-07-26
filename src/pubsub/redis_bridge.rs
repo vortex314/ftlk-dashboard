@@ -66,7 +66,7 @@ pub async fn redis(config: Value, tx_broadcast: broadcast::Sender<PubSubEvent>) 
             );
             match tx_broadcast.send(PubSubEvent::Publish {
                 topic: msg.get_channel_name().to_string(),
-                message: msg.get_payload().unwrap(),
+                payload: msg.get_payload().unwrap(),
             }) {
                 Ok(_) => {}
                 Err(e) => {
